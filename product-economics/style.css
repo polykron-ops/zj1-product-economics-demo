@@ -160,6 +160,6 @@ textarea.text-input { resize: vertical; min-height: 88px; }
 .entry-head { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; }
 .entry > small { display: block; color: #a0a0a7; margin-top: 4px; font-size: 10px; }
 .entry-actions { display: flex; gap: 12px; margin-top: 7px; }
-@media (max-width: 1130px) { .key-grid { --collapsed-height: 260px; grid-template-columns: minmax(210px,.8fr) minmax(270px,1.2fr); } .pricing-card { grid-column: 1 / -1; } .pricing-card summary { min-height: 150px; } }
+@media (max-width: 1130px) { .key-grid { --collapsed-height: 260px; grid-template-columns: minmax(210px,.8fr) minmax(270px,1.2fr); } .pricing-card { grid-column: 1 / -1; } }
 @media (max-width: 760px) { .sidebar { display: none; } .topbar { padding: 0 18px; } .page { padding: 22px 16px 60px; } .trial-rail { padding: 0 12px; font-size: 10px; } .key-grid { --collapsed-height: 175px; grid-template-columns: 1fr; } .pricing-card { grid-column: auto; } .image-card { display: grid; grid-template-columns: 130px 1fr; } .image-wrap { height: 100%; } .image-caption { justify-content: center; } }
 @media (max-width: 470px) { .notice { align-items: start; } .multiplier-grid { grid-template-columns: 1fr; gap: 0; } .trial-drawer { padding: 18px; } .trial-rail > span { max-width: 50%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; } }
