@@ -142,6 +142,8 @@ Zircon`.split('\n');
   const put = (id, v) => { $(id).value = v ?? ''; };
   const relatedProducts = [];
   const tags = [];
+  const SAMPLE_DESCRIPTION = 'A geometric statement necklace with alternating warm and cool metallic bars suspended from a fine chain.';
+  let descriptionEnabled = true;
   let selectedImageName = '';
   let photoUrl = null;
   const checked = id => [...$(id).querySelectorAll('input:checked')].map(input => input.value);
@@ -207,13 +209,30 @@ Zircon`.split('\n');
       item.append(name, remove);
       host.append(item);
     }
+    for (const button of $('presetTags').querySelectorAll('button[data-tag]')) {
+      button.setAttribute('aria-pressed', String(tags.some(tag => tag.toLowerCase() === button.dataset.tag.toLowerCase())));
+    }
   }
-  function addTag() {
-    const tag = value('tagInput');
+  function addTag(tag = value('tagInput')) {
     if (!tag || tags.some(item => item.toLowerCase() === tag.toLowerCase())) return;
     tags.push(tag);
     put('tagInput', '');
     renderTags();
+  }
+  function togglePresetTag(tag) {
+    const index = tags.findIndex(item => item.toLowerCase() === tag.toLowerCase());
+    if (index < 0) tags.push(tag);
+    else tags.splice(index, 1);
+    renderTags();
+  }
+  function setDescriptionEnabled(enabled) {
+    descriptionEnabled = enabled;
+    $('catalogDescription').disabled = !enabled;
+    $('catalogDescriptionHebrew').disabled = !enabled;
+    $('toggleDescription').setAttribute('aria-pressed', String(enabled));
+    $('toggleDescription').textContent = enabled ? 'Disable description' : 'Enable description';
+    $('descriptionStatus').textContent = enabled ? 'Description enabled.' : 'Description disabled. Both texts are kept.';
+    document.querySelector('.description-section').classList.toggle('is-disabled', !enabled);
   }
   function showInput(name) { return [...$('catalogShow').querySelectorAll('input')].find(input => input.value === name); }
   function updateShow(changed) {
@@ -253,11 +272,10 @@ Zircon`.split('\n');
     photoUrl = file ? URL.createObjectURL(file) : null;
     $('productPhoto').src = photoUrl || './sample-product.png';
     $('productPhoto').alt = file ? 'Selected trial product image' : 'Sample mixed-metal necklace supplied for the prototype';
-    $('productImageCaption').textContent = file ? 'Selected image · local preview only' : 'Sample image · no catalogue connection';
     selectedImageName = file?.name || '';
-    $('catalogImageStatus').textContent = file
-      ? `Previewing ${file.name}. Trial entries record its file name only.`
-      : 'Selecting an image previews it here. Trial entries record its file name only.';
+    $('catalogImageStatus').textContent = file ? file.name : '';
+    $('descriptionSource').textContent = file ? 'New image selected. Write or edit the English description.' : 'Example draft for the sample image. Edit before use.';
+    if (file && value('catalogDescription') === SAMPLE_DESCRIPTION) put('catalogDescription', '');
   }
   function catalogSnapshot() {
     return {
@@ -267,7 +285,8 @@ Zircon`.split('\n');
       gemstones: ['catalogStone1', 'catalogStone2', 'catalogStone3'].map(value),
       currentSitePrice: value('catalogPrice'), sizes: value('catalogSizes'),
       status: radio('catalogStatus'), show: checked('catalogShow'), tags: tags.slice(),
-      description: value('catalogDescription'), internalNote: value('catalogInternalNote'),
+      description: value('catalogDescription'), descriptionHebrew: value('catalogDescriptionHebrew'), descriptionEnabled,
+      internalNote: value('catalogInternalNote'),
       imageFileName: selectedImageName, relatedProducts: relatedProducts.slice()
     };
   }
@@ -284,8 +303,11 @@ Zircon`.split('\n');
     for (const [id, key] of [
       ['catalogSection','section'], ['catalogTotalWeight','totalWeight'],
       ['catalogGoldWeight','goldWeight'], ['catalogSilverWeight','silverWeight'], ['catalogPrice','currentSitePrice'],
-      ['catalogSizes','sizes'], ['catalogDescription','description'], ['catalogInternalNote','internalNote']
+      ['catalogSizes','sizes'], ['catalogInternalNote','internalNote']
     ]) put(id, item[key] ?? '');
+    put('catalogDescription', item.description ?? SAMPLE_DESCRIPTION);
+    put('catalogDescriptionHebrew', item.descriptionHebrew ?? '');
+    setDescriptionEnabled(item.descriptionEnabled !== false);
     put('catalogCode', item.sku ?? item.code ?? 'AVN01575');
     for (const input of $('catalogCategories').querySelectorAll('input')) input.checked = (item.categories || []).includes(input.value);
     for (const input of document.querySelectorAll('input[name="catalogStatus"]')) input.checked = input.value === (item.status || 'Active');
@@ -302,8 +324,12 @@ Zircon`.split('\n');
     $('catalogImage').value = '';
     setProductPhoto(null);
     selectedImageName = item.imageFileName || '';
-    if (selectedImageName) $('catalogImageStatus').textContent = `Saved file name: ${selectedImageName}. Re-select the file to preview it.`;
+    if (selectedImageName) {
+      $('catalogImageStatus').textContent = `Re-select image: ${selectedImageName}`;
+      $('descriptionSource').textContent = 'Description saved with this entry. Re-select the image to preview it.';
+    }
     $('productCodePreview').textContent = value('catalogCode') || 'AVN01575';
+    $('pictureSku').textContent = value('catalogCode') || 'AVN01575';
   }
 
   function componentInput(id) { return $('component-' + id); }
@@ -750,7 +776,7 @@ Zircon`.split('\n');
       $('saveStatus').textContent = 'Save at least one entry before exporting.';
       return;
     }
-    const catalogKeys = ['section','categories','sku','metals','totalWeight','goldWeight','silverWeight','gemstone1','gemstone2','gemstone3','currentSitePrice','sizes','status','show','tags','description','internalNote','imageFileName','relatedProducts'];
+    const catalogKeys = ['section','categories','sku','metals','totalWeight','goldWeight','silverWeight','gemstone1','gemstone2','gemstone3','currentSitePrice','sizes','status','show','tags','description','descriptionHebrew','descriptionEnabled','internalNote','imageFileName','relatedProducts'];
     const keys = ['savedAt', 'productReference', ...catalogKeys, 'totalCost', ...components.map(([id]) => id), 'componentSubtotal', 'dealerMarkup', 'componentDetails', 'commercialBase', 'wholesaleMultiplier', 'wholesalePrice', 'retailMultiplier', 'retailPrice', 'feedback'];
     const quote = input => {
       const raw = String(input ?? '');
@@ -763,7 +789,7 @@ Zircon`.split('\n');
       const price = id => item.commercialBase !== '' && item[id] !== '' ? (Number(item.commercialBase) * Number(item[id])).toFixed(2) : '';
       const catalog = item.catalog || {};
       const catalogValues = [catalog.section, (catalog.categories || []).join('; '), catalog.sku ?? catalog.code, (catalog.metals || []).join('; '), catalog.totalWeight, catalog.goldWeight, catalog.silverWeight,
-        ...(catalog.gemstones || ['', '', '']), catalog.currentSitePrice, catalog.sizes, catalog.status, (catalog.show || [catalog.audience || 'All users', 'Retail']).join('; '), (catalog.tags || []).join('; '), catalog.description, catalog.internalNote, catalog.imageFileName, (catalog.relatedProducts || []).join('; ')];
+        ...(catalog.gemstones || ['', '', '']), catalog.currentSitePrice, catalog.sizes, catalog.status, (catalog.show || [catalog.audience || 'All users', 'Retail']).join('; '), (catalog.tags || []).join('; '), catalog.description, catalog.descriptionHebrew, catalog.descriptionEnabled !== false, catalog.internalNote, catalog.imageFileName, (catalog.relatedProducts || []).join('; ')];
       rows.push([
         item.savedAt, item.productReference, ...catalogValues, item.totalCost,
         ...components.map(([id]) => item.components?.[id] ?? ''),
@@ -811,10 +837,12 @@ Zircon`.split('\n');
     $('componentPanel').open = true;
     $('componentPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
-  $('catalogCode').addEventListener('input', () => { $('productCodePreview').textContent = value('catalogCode') || 'AVN01575'; });
+  $('catalogCode').addEventListener('input', () => { $('productCodePreview').textContent = $('pictureSku').textContent = value('catalogCode') || 'AVN01575'; });
   $('catalogShow').addEventListener('change', event => { if (event.target.matches('input[type=checkbox]')) updateShow(event.target); });
-  $('addTag').addEventListener('click', addTag);
+  $('addTag').addEventListener('click', () => addTag());
   $('tagInput').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); addTag(); } });
+  $('presetTags').addEventListener('click', event => { const button = event.target.closest('button[data-tag]'); if (button) togglePresetTag(button.dataset.tag); });
+  $('toggleDescription').addEventListener('click', () => setDescriptionEnabled(!descriptionEnabled));
   $('catalogImage').addEventListener('change', event => {
     const file = event.target.files?.[0];
     if (file && !file.type.startsWith('image/')) {
@@ -865,6 +893,7 @@ Zircon`.split('\n');
     }
   });
   populateGemstones();
+  renderTags();
   syncPicker();
   display();
   update();
