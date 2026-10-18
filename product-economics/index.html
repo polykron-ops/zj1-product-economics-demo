@@ -23,12 +23,12 @@
     <div class="main-shell">
       <header class="topbar"><div class="breadcrumb"><span>Products</span><span class="crumb-sep">/</span><strong>Product details</strong></div><span class="demo-pill"><span class="demo-dot"></span> Demo mode</span></header>
       <main class="page">
-        <div class="page-heading"><div><span class="back-link">‹ Back to products</span><h1>Sample mixed-metal necklace</h1><p>DEMO-001 <span class="dot-sep">·</span> Draft example</p></div></div>
+        <div class="page-heading"><div><span class="back-link">‹ Back to products</span><h1>Sample mixed-metal necklace</h1><p><span id="productCodePreview">DEMO-001</span> <span class="dot-sep">·</span> Draft example</p></div></div>
         <div class="notice" role="note"><span class="notice-icon">i</span><span>Standalone preview. Values stay in this browser and do not update Medusa, Tamuz, Hashavshevet, checkout or live prices.</span></div>
         <div class="key-grid">
           <section class="card image-card" aria-label="Sample product picture">
-            <div class="image-wrap"><img src="./sample-product.png" alt="Sample mixed-metal necklace supplied for the prototype"></div>
-            <div class="image-caption"><strong>Product picture</strong><span>Sample image · no catalogue connection</span></div>
+            <div class="image-wrap"><img id="productPhoto" src="./sample-product.png" alt="Sample mixed-metal necklace supplied for the prototype"></div>
+            <div class="image-caption"><strong>Product picture</strong><span id="productImageCaption">Sample image · no catalogue connection</span></div>
           </section>
           <details id="costPanel" class="card detail-card cost-card">
             <summary>
@@ -55,7 +55,6 @@
                   <option value="packaging">Packaging</option>
                   <option value="other">Other</option>
                 </select>
-                <datalist id="gemstoneSuggestions"><option value="Diamond"><option value="Sapphire"><option value="Ruby"><option value="Emerald"><option value="Amethyst"><option value="Topaz"><option value="Garnet"><option value="Pearl"><option value="Tourmaline"><option value="Opal"></datalist>
                 <div id="dealerMarkupRow" class="dealer-markup" hidden><label for="dealerMarkup">Dealer markup <span class="help" tabindex="0" aria-label="Dealer markup help">?<span class="tip">Added to live metal spot rates and entered supplier quotes for this product. Default 5%; editable.</span></span></label><div class="input-money"><input id="dealerMarkup" type="number" min="0" step="0.1" inputmode="decimal" value="5"><span>%</span></div></div>
                 <div class="calc-row"><span>Component subtotal</span><strong id="componentSubtotal">$US 0.00</strong></div>
                 <button type="button" class="btn btn-secondary" id="adoptSubtotal" disabled>Use subtotal as total cost</button>
@@ -88,6 +87,32 @@
             </div>
           </details>
         </div>
+        <details id="catalogPanel" class="card catalog-card">
+          <summary><span><span class="eyebrow">Current product panel</span><strong>Product details</strong><small>Catalogue fields from the existing site</small></span><span class="expand-control" aria-hidden="true">⌄</span></summary>
+          <div class="catalog-body">
+            <p class="catalog-note">These fields document the existing product panel. The current-site price is a reference field; it does not set the trial’s wholesale or retail prices.</p>
+            <div class="catalog-grid">
+              <div class="field-row"><label for="catalogSection">Section</label><input id="catalogSection" class="text-input" list="sectionSuggestions" placeholder="e.g. Bracelets"><datalist id="sectionSuggestions"><option value="Bracelets"></datalist></div>
+              <div class="field-row"><label for="catalogCode">Code</label><input id="catalogCode" class="text-input" maxlength="80" placeholder="e.g. BD148"></div>
+              <fieldset class="catalog-fieldset span-full"><legend>Category</legend><div class="choice-grid" id="catalogCategories">
+                <label><input type="checkbox" value="Ancient roman glass">Ancient roman glass</label><label><input type="checkbox" value="Glass">Glass</label><label><input type="checkbox" value="Gold">Gold</label><label><input type="checkbox" value="Hearts & Love">Hearts &amp; Love</label><label><input type="checkbox" value="Religious">Religious</label><label><input type="checkbox" value="Rings">Rings</label><label><input type="checkbox" value="Silver & Gold">Silver &amp; Gold</label><label><input type="checkbox" value="Solid">Solid</label><label><input type="checkbox" value="Sterling Silver">Sterling Silver</label><label><input type="checkbox" value="Sterling with pearls">Sterling with pearls</label><label><input type="checkbox" value="Stones incorporated">Stones incorporated</label><label><input type="checkbox" value="Watches">Watches</label>
+              </div></fieldset>
+              <fieldset class="catalog-fieldset"><legend>Metal</legend><div class="choice-inline" id="catalogMetals"><label><input type="checkbox" value="Gold">Gold</label><label><input type="checkbox" value="Silver">Silver</label></div></fieldset>
+              <div class="field-row"><label for="catalogTotalWeight">Total weight</label><div class="input-money"><input id="catalogTotalWeight" type="number" min="0" step="any" inputmode="decimal"><small>g</small></div></div>
+              <div class="field-row"><label for="catalogGoldWeight">Gold weight</label><div class="input-money"><input id="catalogGoldWeight" type="number" min="0" step="any" inputmode="decimal"><small>g</small></div></div>
+              <div class="field-row"><label for="catalogSilverWeight">Silver weight</label><div class="input-money"><input id="catalogSilverWeight" type="number" min="0" step="any" inputmode="decimal"><small>g</small></div></div>
+              <div class="field-row span-full"><label>Gemstones</label><div class="catalog-stone-grid"><select id="catalogStone1" class="text-input" aria-label="Gemstone 1"></select><select id="catalogStone2" class="text-input" aria-label="Gemstone 2"></select><select id="catalogStone3" class="text-input" aria-label="Gemstone 3"></select></div></div>
+              <div class="field-row"><label for="catalogPrice">Current-site price <span class="help" tabindex="0" aria-label="Current-site price help">?<span class="tip">A reference to the existing site's Price field. It is saved with trial entries but never used in cost, wholesale or retail calculations.</span></span></label><div class="input-money"><span>$US</span><input id="catalogPrice" type="number" min="0" step="0.01" inputmode="decimal"></div></div>
+              <div class="field-row"><label for="catalogSizes">Sizes</label><input id="catalogSizes" class="text-input" list="sizeSuggestions" placeholder="None or size labels"><datalist id="sizeSuggestions"><option value="None"></datalist></div>
+              <fieldset class="catalog-fieldset"><legend>Show</legend><div class="choice-inline"><label><input type="radio" name="catalogStatus" value="Active" checked>Active</label><label><input type="radio" name="catalogStatus" value="Inactive">Inactive</label></div><div class="choice-inline audience-row"><label><input type="radio" name="catalogAudience" value="All users" checked>All users</label><label><input type="radio" name="catalogAudience" value="Only registered">Only registered</label></div></fieldset>
+              <fieldset class="catalog-fieldset"><legend>Websites</legend><div class="choice-inline" id="catalogWebsites"><label><input type="checkbox" value="General" checked>General</label><label><input type="checkbox" value="Russian">Russian</label></div></fieldset>
+              <div class="field-row span-full"><label for="catalogDescription">Description · all users</label><textarea id="catalogDescription" class="text-input" rows="3"></textarea></div>
+              <div class="field-row span-full"><label for="catalogInternalNote">Internal note · admin</label><textarea id="catalogInternalNote" class="text-input" rows="3"></textarea></div>
+              <div class="field-row span-full"><label for="catalogImage">Image</label><input id="catalogImage" class="text-input file-input" type="file" accept="image/*"><p id="catalogImageStatus" class="helper">Selecting an image previews it here. Trial entries record its file name only.</p></div>
+              <div class="field-row span-full"><label for="relatedProductInput">Related products</label><div class="related-input"><input id="relatedProductInput" class="text-input" maxlength="80" placeholder="Enter product code"><button type="button" id="addRelatedProduct" class="btn btn-secondary">Add</button></div><div id="relatedProducts" class="related-list"></div></div>
+            </div>
+          </div>
+        </details>
       </main>
     </div>
   </div>

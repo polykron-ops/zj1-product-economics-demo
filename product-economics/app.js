@@ -12,6 +12,123 @@
     ['packaging', 'Packaging', 'Packaging cost allocated to one product.'],
     ['other', 'Other', 'Any other direct product cost.']
   ];
+  const gemstoneNames = `Abalony shell
+Amber
+Amethyst
+Apple Quartz
+Aqua Chalcedony
+Aquamarine (202)
+Aventurine
+Black Diamond (215)
+Black Obsidian
+Black-Jet (280)
+Blue Chalcedony
+Blue Cherry Quartz
+Blue Mabe pearl
+Blue Topaz
+Blue Topaz Glass
+Carnelian
+Cetrine
+Chalcedony
+Cherry Quartz
+Chrysocolla
+Clear Glass
+Clear Quartz
+Coin Pearl
+Coin pearl
+Compresed Turquoise
+Coral
+Crystal (001)
+Denim Chalcedony
+Drusy-Blue
+drusy-gold
+Drusy-silver
+Drusy-white
+Flower Beads
+Garnet
+Gold fill
+Gold Sand Stone
+goldfill
+Gray Moon stone
+gray moonstone
+Gray Mother of pearl Doublet
+Green Amethyst
+Green Aventurine
+Hametite
+Ice Qtz
+Indian Agate
+Jade
+Kianite
+Labradorite
+Lapis
+Lavender chalcedony
+Lemon Quartz
+Light Amethyst
+Light Rose
+Light Sapphire
+Light Sapphire (211)
+Malachite
+Milky Aqua
+Mixed colors
+Moon Stone
+Moss Agate
+Mother of Pearl
+Mother of pearl dublet
+New Jade
+Ocean
+onyx
+Opalite
+Peach Moonstone
+Pearls
+Pearls plus
+Peridot
+Pink Amethyst
+Pink Chalcedony
+Pink Chalcedony
+Pink Opal
+Pink Pearl
+Platinum Drusy
+Rainbow Jasper
+Rainbow qtz
+Red Aventurine
+Red Rubby
+Roman glass
+Rose
+Rose Quartz
+Rutilated Quartz
+Sapphire (206)
+shell
+Smokey Quartz
+Sodolite
+Swarovski
+Swarovski - Amethyst
+Swarovski - Aquamarine
+Swarovski - Crystal AB
+Swarovski - Golden Shadow
+Swarovski - Jet
+Swarovski - Light Amethyst
+Swarovski - Light Rose
+Swarovski - Rose
+Swarovski-Amethyst+Light Amethyst
+Swarovski-Aquamarine + Light Azore
+swarovski-crystal rocks-black
+swarovski-crystal rocks-silver
+Swarovski-Golden Sadow + Light Smokey Topaz
+swarovski-golden shade
+Swarovski-Light Azore
+Swarovski-Light Siam
+Swarovski-Light Smokey Topaz
+Swarovski-Siam
+Syn Opal
+Tanzanite (539)
+Turquoise
+White Agate
+White Calcedony
+White Drusy
+White Mabe Pearl
+White Quartz
+White Striped Jasper
+Zircon`.split('\n');
   const definitions = new Map(components.map(item => [item[0], item]));
   const active = [];
   const rates = { silver: null, gold: null };
@@ -23,6 +140,99 @@
   const valid = n => n !== null && Number.isFinite(n) && n >= 0;
   const value = id => $(id).value.trim();
   const put = (id, v) => { $(id).value = v ?? ''; };
+  const relatedProducts = [];
+  let selectedImageName = '';
+  let photoUrl = null;
+  const checked = id => [...$(id).querySelectorAll('input:checked')].map(input => input.value);
+  const radio = name => document.querySelector(`input[name="${name}"]:checked`)?.value || '';
+  function populateGemstones() {
+    for (const id of ['catalogStone1', 'catalogStone2', 'catalogStone3']) {
+      const select = $(id);
+      const none = document.createElement('option');
+      none.value = '';
+      none.textContent = 'None';
+      select.append(none);
+      for (const name of gemstoneNames) {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = name;
+        select.append(option);
+      }
+    }
+  }
+  function renderRelatedProducts() {
+    const host = $('relatedProducts');
+    host.replaceChildren();
+    for (const code of relatedProducts) {
+      const item = document.createElement('span');
+      item.className = 'related-item';
+      const text = document.createElement('span');
+      text.textContent = code;
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.textContent = '×';
+      remove.setAttribute('aria-label', 'Remove related product ' + code);
+      remove.addEventListener('click', () => {
+        relatedProducts.splice(relatedProducts.indexOf(code), 1);
+        renderRelatedProducts();
+      });
+      item.append(text, remove);
+      host.append(item);
+    }
+  }
+  function addRelatedProduct(code = value('relatedProductInput')) {
+    const trimmed = code.trim();
+    if (!trimmed || relatedProducts.some(item => item.toLowerCase() === trimmed.toLowerCase())) return;
+    relatedProducts.push(trimmed);
+    put('relatedProductInput', '');
+    renderRelatedProducts();
+  }
+  function setProductPhoto(file) {
+    if (photoUrl) URL.revokeObjectURL(photoUrl);
+    photoUrl = file ? URL.createObjectURL(file) : null;
+    $('productPhoto').src = photoUrl || './sample-product.png';
+    $('productPhoto').alt = file ? 'Selected trial product image' : 'Sample mixed-metal necklace supplied for the prototype';
+    $('productImageCaption').textContent = file ? 'Selected image · local preview only' : 'Sample image · no catalogue connection';
+    selectedImageName = file?.name || '';
+    $('catalogImageStatus').textContent = file
+      ? `Previewing ${file.name}. Trial entries record its file name only.`
+      : 'Selecting an image previews it here. Trial entries record its file name only.';
+  }
+  function catalogSnapshot() {
+    return {
+      section: value('catalogSection'), code: value('catalogCode'),
+      categories: checked('catalogCategories'), metals: checked('catalogMetals'),
+      totalWeight: value('catalogTotalWeight'), goldWeight: value('catalogGoldWeight'), silverWeight: value('catalogSilverWeight'),
+      gemstones: ['catalogStone1', 'catalogStone2', 'catalogStone3'].map(value),
+      currentSitePrice: value('catalogPrice'), sizes: value('catalogSizes'),
+      status: radio('catalogStatus'), audience: radio('catalogAudience'), websites: checked('catalogWebsites'),
+      description: value('catalogDescription'), internalNote: value('catalogInternalNote'),
+      imageFileName: selectedImageName, relatedProducts: relatedProducts.slice()
+    };
+  }
+  function restoreCatalog(item = {}) {
+    for (const [id, key] of [
+      ['catalogSection','section'], ['catalogCode','code'], ['catalogTotalWeight','totalWeight'],
+      ['catalogGoldWeight','goldWeight'], ['catalogSilverWeight','silverWeight'], ['catalogPrice','currentSitePrice'],
+      ['catalogSizes','sizes'], ['catalogDescription','description'], ['catalogInternalNote','internalNote']
+    ]) put(id, item[key] ?? '');
+    for (const [id, key] of [['catalogCategories','categories'], ['catalogMetals','metals'], ['catalogWebsites','websites']]) {
+      const values = Array.isArray(item[key]) ? item[key] : key === 'websites' ? ['General'] : [];
+      for (const input of $(id).querySelectorAll('input')) input.checked = values.includes(input.value);
+    }
+    for (const name of ['catalogStatus','catalogAudience']) {
+      const selected = item[name === 'catalogStatus' ? 'status' : 'audience'] || (name === 'catalogStatus' ? 'Active' : 'All users');
+      for (const input of document.querySelectorAll(`input[name="${name}"]`)) input.checked = input.value === selected;
+    }
+    for (let i = 0; i < 3; i++) put('catalogStone' + (i + 1), item.gemstones?.[i] ?? '');
+    relatedProducts.splice(0, relatedProducts.length, ...(Array.isArray(item.relatedProducts) ? item.relatedProducts : []));
+    renderRelatedProducts();
+    $('catalogImage').value = '';
+    setProductPhoto(null);
+    selectedImageName = item.imageFileName || '';
+    if (selectedImageName) $('catalogImageStatus').textContent = `Saved file name: ${selectedImageName}. Re-select the file to preview it.`;
+    $('productCodePreview').textContent = value('catalogCode') || 'DEMO-001';
+  }
 
   function componentInput(id) { return $('component-' + id); }
   const entered = input => input && valid(number(input));
@@ -115,11 +325,25 @@
     const label = document.createElement('label');
     label.htmlFor = 'stone-type-' + key;
     label.textContent = 'Gemstone';
-    const type = document.createElement('input');
+    const type = document.createElement('select');
     type.id = 'stone-type-' + key;
     type.className = 'text-input stone-type';
-    type.placeholder = 'e.g. sapphire';
-    type.setAttribute('list', 'gemstoneSuggestions');
+    const blank = document.createElement('option');
+    blank.value = '';
+    blank.textContent = 'Choose gemstone';
+    type.append(blank);
+    for (const gemstone of gemstoneNames) {
+      const option = document.createElement('option');
+      option.value = gemstone;
+      option.textContent = gemstone;
+      type.append(option);
+    }
+    if (saved.type && !gemstoneNames.includes(saved.type)) {
+      const previous = document.createElement('option');
+      previous.value = saved.type;
+      previous.textContent = saved.type + ' (saved value)';
+      type.append(previous);
+    }
     type.value = saved.type || '';
     typeWrap.append(label, type);
     row.append(typeWrap);
@@ -353,7 +577,8 @@
       componentDetails: Object.fromEntries(active.map(id => [id,
         id === 'gemstones' ? { stones: stones(), legacyAmount: $('legacy-' + id)?.value ?? '' } :
         ['silver', 'gold', 'brass'].includes(id) ? { grams: value('grams-' + id), spot: id === 'brass' ? value('spot-brass') : '', rate: rates[id], legacyAmount: $('legacy-' + id)?.value ?? '' } : {}
-      ]))
+      ])),
+      catalog: catalogSnapshot()
     };
   }
   function display(list = entries()) {
@@ -373,7 +598,7 @@
       const head = document.createElement('div');
       head.className = 'entry-head';
       const title = document.createElement('strong');
-      title.textContent = item.productReference || 'Sample product';
+      title.textContent = item.productReference || item.catalog?.code || 'Sample product';
       const cost = document.createElement('strong');
       cost.textContent = item.totalCost !== '' && valid(Number(item.totalCost)) ? dollars(Number(item.totalCost)) : '—';
       head.append(title, cost);
@@ -403,6 +628,7 @@
   }
   function openEntry(item) {
     for (const id of ['productReference', 'feedback', 'totalCost', 'commercialBase', 'wholesaleMultiplier', 'retailMultiplier']) put(id, item[id]);
+    restoreCatalog(item.catalog);
     clearComponents();
     put('dealerMarkup', item.dealerMarkup ?? '5');
     const selected = Array.isArray(item.componentTypes)
@@ -411,6 +637,7 @@
     for (const id of selected) addComponent(id, item.components?.[id] ?? '', item.componentDetails?.[id] || {});
     $('costPanel').open = item.totalCost !== '' || selected.length > 0;
     $('pricingPanel').open = ['commercialBase', 'wholesaleMultiplier', 'retailMultiplier'].some(id => (item[id] ?? '') !== '');
+    $('catalogPanel').open = !!item.catalog;
     $('saveStatus').textContent = 'Saved entry opened. Saving again creates another copy.';
     closeDrawer();
     update();
@@ -429,7 +656,8 @@
       ...(active.includes('brass') ? [$('spot-brass')] : []),
       ...document.querySelectorAll('.stone-quantity, .stone-carats, .stone-price'),
       ...document.querySelectorAll('[id^=legacy-]'),
-      $('dealerMarkup'), $('commercialBase'), $('wholesaleMultiplier'), $('retailMultiplier')
+      $('dealerMarkup'), $('commercialBase'), $('wholesaleMultiplier'), $('retailMultiplier'),
+      $('catalogTotalWeight'), $('catalogGoldWeight'), $('catalogSilverWeight'), $('catalogPrice')
     ];
     if (optional.some(input => input.value.trim() !== '' && !valid(number(input)))) {
       $('saveStatus').textContent = 'Amounts and multipliers must be zero or greater.';
@@ -448,7 +676,8 @@
       $('saveStatus').textContent = 'Save at least one entry before exporting.';
       return;
     }
-    const keys = ['savedAt', 'productReference', 'totalCost', ...components.map(([id]) => id), 'componentSubtotal', 'dealerMarkup', 'componentDetails', 'commercialBase', 'wholesaleMultiplier', 'wholesalePrice', 'retailMultiplier', 'retailPrice', 'feedback'];
+    const catalogKeys = ['section','categories','code','metals','totalWeight','goldWeight','silverWeight','gemstone1','gemstone2','gemstone3','currentSitePrice','sizes','status','audience','websites','description','internalNote','imageFileName','relatedProducts'];
+    const keys = ['savedAt', 'productReference', ...catalogKeys, 'totalCost', ...components.map(([id]) => id), 'componentSubtotal', 'dealerMarkup', 'componentDetails', 'commercialBase', 'wholesaleMultiplier', 'wholesalePrice', 'retailMultiplier', 'retailPrice', 'feedback'];
     const quote = input => {
       const raw = String(input ?? '');
       const safe = /^\s*[=+\-@]/.test(raw) ? "'" + raw : raw;
@@ -458,8 +687,11 @@
     for (const item of list) {
       const sum = components.reduce((total, [id]) => total + (Number(item.components?.[id]) || 0), 0);
       const price = id => item.commercialBase !== '' && item[id] !== '' ? (Number(item.commercialBase) * Number(item[id])).toFixed(2) : '';
+      const catalog = item.catalog || {};
+      const catalogValues = [catalog.section, (catalog.categories || []).join('; '), catalog.code, (catalog.metals || []).join('; '), catalog.totalWeight, catalog.goldWeight, catalog.silverWeight,
+        ...(catalog.gemstones || ['', '', '']), catalog.currentSitePrice, catalog.sizes, catalog.status, catalog.audience, (catalog.websites || []).join('; '), catalog.description, catalog.internalNote, catalog.imageFileName, (catalog.relatedProducts || []).join('; ')];
       rows.push([
-        item.savedAt, item.productReference, item.totalCost,
+        item.savedAt, item.productReference, ...catalogValues, item.totalCost,
         ...components.map(([id]) => item.components?.[id] ?? ''),
         sum.toFixed(2), item.dealerMarkup ?? '', JSON.stringify(item.componentDetails || {}), item.commercialBase, item.wholesaleMultiplier,
         price('wholesaleMultiplier'), item.retailMultiplier,
@@ -478,9 +710,11 @@
   function resetForm() {
     for (const id of ['totalCost', 'commercialBase', 'wholesaleMultiplier', 'retailMultiplier', 'productReference', 'feedback']) put(id, '');
     put('dealerMarkup', '5');
+    restoreCatalog();
     clearComponents();
     $('costPanel').open = false;
     $('pricingPanel').open = false;
+    $('catalogPanel').open = false;
     for (const id of ['componentsStatus', 'pricingStatus']) $(id).textContent = '';
     $('saveStatus').textContent = 'Product fields reset. Saved entries remain available.';
     update();
@@ -497,6 +731,20 @@
 
   $('componentSelect').addEventListener('change', event => {
     if (event.target.value) addComponent(event.target.value);
+  });
+  $('catalogCode').addEventListener('input', () => { $('productCodePreview').textContent = value('catalogCode') || 'DEMO-001'; });
+  $('catalogImage').addEventListener('change', event => {
+    const file = event.target.files?.[0];
+    if (file && !file.type.startsWith('image/')) {
+      event.target.value = '';
+      $('catalogImageStatus').textContent = 'Choose an image file.';
+      return;
+    }
+    setProductPhoto(file || null);
+  });
+  $('addRelatedProduct').addEventListener('click', () => addRelatedProduct());
+  $('relatedProductInput').addEventListener('keydown', event => {
+    if (event.key === 'Enter') { event.preventDefault(); addRelatedProduct(); }
   });
   document.addEventListener('input', event => {
     if (event.target.matches('input[type=number], .stone-type')) update();
@@ -534,6 +782,7 @@
       }
     }
   });
+  populateGemstones();
   syncPicker();
   display();
   update();
