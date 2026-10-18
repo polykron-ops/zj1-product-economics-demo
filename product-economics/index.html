@@ -40,26 +40,8 @@
                 <label for="totalCost">Total Product Cost <span class="help" tabindex="0" aria-label="Total Product Cost help">?<span class="tip">Your known manufacturing cost for one product. Optional components do not change this number unless you apply their subtotal.</span></span></label>
                 <div class="input-money"><span>$US</span><input id="totalCost" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"><small>per product</small></div>
               </div>
-              <div class="component-section">
-                <div class="section-label"><strong>Components</strong><small>Optional. Add only those used in this product.</small></div>
-                <div id="componentFields" class="component-fields"><p class="empty-components">No components added</p></div>
-                <label class="select-label" for="componentSelect">Add a component</label>
-                <select id="componentSelect" class="component-select" aria-label="Add a component">
-                  <option value="">+ Add component</option>
-                  <option value="silver">Silver</option>
-                  <option value="gold">Gold</option>
-                  <option value="brass">Brass</option>
-                  <option value="gemstones">Gemstones</option>
-                  <option value="production">Production</option>
-                  <option value="plating">Plating</option>
-                  <option value="packaging">Packaging</option>
-                  <option value="other">Other</option>
-                </select>
-                <div id="dealerMarkupRow" class="dealer-markup" hidden><label for="dealerMarkup">Dealer markup <span class="help" tabindex="0" aria-label="Dealer markup help">?<span class="tip">Added to live metal spot rates and entered supplier quotes for this product. Default 5%; editable.</span></span></label><div class="input-money"><input id="dealerMarkup" type="number" min="0" step="0.1" inputmode="decimal" value="5"><span>%</span></div></div>
-                <div class="calc-row"><span>Component subtotal</span><strong id="componentSubtotal">$US 0.00</strong></div>
-                <button type="button" class="btn btn-secondary" id="adoptSubtotal" disabled>Use subtotal as total cost</button>
-                <p id="componentsStatus" class="action-status" role="status" aria-live="polite"></p>
-              </div>
+              <p class="helper">Optional component estimates are in Cost components below.</p>
+              <button type="button" class="btn btn-secondary" id="openComponents">Add cost components</button>
             </div>
           </details>
           <details id="pricingPanel" class="card detail-card pricing-card">
@@ -87,12 +69,13 @@
             </div>
           </details>
         </div>
+        <div class="lower-grid">
         <details id="catalogPanel" class="card catalog-card">
           <summary><span><span class="eyebrow">Current product panel</span><strong>Product details</strong><small>Catalogue fields from the existing site</small></span><span class="expand-control" aria-hidden="true">⌄</span></summary>
           <div class="catalog-body">
             <p class="catalog-note">These fields document the existing product panel. The current-site price is a reference field; it does not set the trial’s wholesale or retail prices.</p>
             <div class="catalog-grid">
-              <div class="field-row"><label for="catalogSection">Section</label><input id="catalogSection" class="text-input" list="sectionSuggestions" placeholder="e.g. Bracelets"><datalist id="sectionSuggestions"><option value="Bracelets"></datalist></div>
+              <div class="field-row"><label for="catalogSection">Section</label><select id="catalogSection" class="text-input"><option value="">Choose section</option><option value="Rings">Rings</option><option value="Necklaces">Necklaces</option><option value="Earrings">Earrings</option><option value="Bracelets">Bracelets</option><option value="Watches">Watches</option><option value="Pins &amp; Brooches">Pins &amp; Brooches</option><option value="Religious">Religious</option><option value="Man's Jewelry">Man's Jewelry</option><option value="Beads">Beads</option><option value="Closeout">Closeout</option></select></div>
               <div class="field-row"><label for="catalogCode">Code</label><input id="catalogCode" class="text-input" maxlength="80" placeholder="e.g. BD148"></div>
               <fieldset class="catalog-fieldset span-full"><legend>Category</legend><div class="choice-grid" id="catalogCategories">
                 <label><input type="checkbox" value="Ancient roman glass">Ancient roman glass</label><label><input type="checkbox" value="Glass">Glass</label><label><input type="checkbox" value="Gold">Gold</label><label><input type="checkbox" value="Hearts & Love">Hearts &amp; Love</label><label><input type="checkbox" value="Religious">Religious</label><label><input type="checkbox" value="Rings">Rings</label><label><input type="checkbox" value="Silver & Gold">Silver &amp; Gold</label><label><input type="checkbox" value="Solid">Solid</label><label><input type="checkbox" value="Sterling Silver">Sterling Silver</label><label><input type="checkbox" value="Sterling with pearls">Sterling with pearls</label><label><input type="checkbox" value="Stones incorporated">Stones incorporated</label><label><input type="checkbox" value="Watches">Watches</label>
@@ -113,6 +96,33 @@
             </div>
           </div>
         </details>
+        <details id="componentPanel" class="card component-card">
+          <summary><span><span class="eyebrow">Optional product cost</span><strong>Cost components</strong><small>Open to build a breakdown</small></span><span class="expand-control" aria-hidden="true">⌄</span></summary>
+          <div class="component-body">
+            <p class="catalog-note">Add only the components used in this product. The subtotal changes Total Product Cost only when you apply it.</p>
+            <div class="component-section">
+              <div class="section-label"><strong>Components</strong><small>Optional. Add or remove each item.</small></div>
+              <div id="componentFields" class="component-fields"><p class="empty-components">No components added</p></div>
+              <label class="select-label" for="componentSelect">Add a component</label>
+              <select id="componentSelect" class="component-select" aria-label="Add a component">
+                <option value="">+ Add component</option>
+                <option value="silver">Silver</option>
+                <option value="gold">Gold</option>
+                <option value="brass">Brass</option>
+                <option value="gemstones">Gemstones</option>
+                <option value="production">Production</option>
+                <option value="plating">Plating</option>
+                <option value="packaging">Packaging</option>
+                <option value="other">Other</option>
+              </select>
+              <div id="dealerMarkupRow" class="dealer-markup" hidden><label for="dealerMarkup">Dealer markup <span class="help" tabindex="0" aria-label="Dealer markup help">?<span class="tip">Added to live metal spot rates and entered supplier quotes for this product. Default 5%; editable.</span></span></label><div class="input-money"><input id="dealerMarkup" type="number" min="0" step="0.1" inputmode="decimal" value="5"><span>%</span></div></div>
+              <div class="calc-row"><span>Component subtotal</span><strong id="componentSubtotal">$US 0.00</strong></div>
+              <button type="button" class="btn btn-secondary" id="adoptSubtotal" disabled>Use subtotal as total cost</button>
+              <p id="componentsStatus" class="action-status" role="status" aria-live="polite"></p>
+            </div>
+          </div>
+        </details>
+        </div>
       </main>
     </div>
   </div>

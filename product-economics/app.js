@@ -211,6 +211,15 @@ Zircon`.split('\n');
     };
   }
   function restoreCatalog(item = {}) {
+    const section = $('catalogSection');
+    for (const option of section.querySelectorAll('option[data-saved]')) option.remove();
+    if (item.section && ![...section.options].some(option => option.value === item.section)) {
+      const previous = document.createElement('option');
+      previous.value = item.section;
+      previous.textContent = item.section + ' (saved value)';
+      previous.dataset.saved = 'true';
+      section.append(previous);
+    }
     for (const [id, key] of [
       ['catalogSection','section'], ['catalogCode','code'], ['catalogTotalWeight','totalWeight'],
       ['catalogGoldWeight','goldWeight'], ['catalogSilverWeight','silverWeight'], ['catalogPrice','currentSitePrice'],
@@ -635,7 +644,8 @@ Zircon`.split('\n');
       ? item.componentTypes
       : components.map(([id]) => id).filter(id => (item.components?.[id] ?? '') !== '');
     for (const id of selected) addComponent(id, item.components?.[id] ?? '', item.componentDetails?.[id] || {});
-    $('costPanel').open = item.totalCost !== '' || selected.length > 0;
+    $('costPanel').open = item.totalCost !== '';
+    $('componentPanel').open = selected.length > 0;
     $('pricingPanel').open = ['commercialBase', 'wholesaleMultiplier', 'retailMultiplier'].some(id => (item[id] ?? '') !== '');
     $('catalogPanel').open = !!item.catalog;
     $('saveStatus').textContent = 'Saved entry opened. Saving again creates another copy.';
@@ -713,6 +723,7 @@ Zircon`.split('\n');
     restoreCatalog();
     clearComponents();
     $('costPanel').open = false;
+    $('componentPanel').open = false;
     $('pricingPanel').open = false;
     $('catalogPanel').open = false;
     for (const id of ['componentsStatus', 'pricingStatus']) $(id).textContent = '';
@@ -731,6 +742,10 @@ Zircon`.split('\n');
 
   $('componentSelect').addEventListener('change', event => {
     if (event.target.value) addComponent(event.target.value);
+  });
+  $('openComponents').addEventListener('click', () => {
+    $('componentPanel').open = true;
+    $('componentPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
   $('catalogCode').addEventListener('input', () => { $('productCodePreview').textContent = value('catalogCode') || 'DEMO-001'; });
   $('catalogImage').addEventListener('change', event => {
