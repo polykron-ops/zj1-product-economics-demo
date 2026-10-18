@@ -23,22 +23,22 @@
     <div class="main-shell">
       <header class="topbar"><div class="breadcrumb"><span>Products</span><span class="crumb-sep">/</span><strong>Product details</strong></div><span class="demo-pill"><span class="demo-dot"></span> Demo mode</span></header>
       <main class="page">
-        <div class="page-heading"><div><span class="back-link">‹ Back to products</span><h1>Sample silver ring</h1><p>DEMO-001 <span class="dot-sep">·</span> Draft example</p></div></div>
+        <div class="page-heading"><div><span class="back-link">‹ Back to products</span><h1>Sample mixed-metal necklace</h1><p>DEMO-001 <span class="dot-sep">·</span> Draft example</p></div></div>
         <div class="notice" role="note"><span class="notice-icon">i</span><span>Standalone preview. Values stay in this browser and do not update Medusa, Tamuz, Hashavshevet, checkout or live prices.</span></div>
         <div class="key-grid">
           <section class="card image-card" aria-label="Sample product picture">
-            <div class="image-wrap"><img src="./product-sample.svg" alt="Illustrative picture of a silver ring with a pale gemstone"></div>
-            <div class="image-caption"><strong>Product picture</strong><span>Illustrative sample · no catalogue connection</span></div>
+            <div class="image-wrap"><img src="./sample-product.png" alt="Sample mixed-metal necklace supplied for the prototype"></div>
+            <div class="image-caption"><strong>Product picture</strong><span>Sample image · no catalogue connection</span></div>
           </section>
           <details id="costPanel" class="card detail-card cost-card">
             <summary>
               <span class="summary-heading"><span class="eyebrow">Product cost</span><strong>Cost of Goods</strong><small>Total product cost</small></span>
-              <span class="summary-bottom"><strong id="costOverview" class="overview-value">—</strong><span class="expand-control" aria-hidden="true">⌄</span></span>
+              <span class="summary-bottom"><strong id="costOverview" class="overview-value">$US 0.00</strong><span class="expand-control" aria-hidden="true">⌄</span></span>
             </summary>
             <div class="detail-body">
               <div class="field-row">
                 <label for="totalCost">Total Product Cost <span class="help" tabindex="0" aria-label="Total Product Cost help">?<span class="tip">Your known manufacturing cost for one product. Optional components do not change this number unless you apply their subtotal.</span></span></label>
-                <div class="input-money"><span>$</span><input id="totalCost" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"><small>USD per product</small></div>
+                <div class="input-money"><span>$US</span><input id="totalCost" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"><small>per product</small></div>
               </div>
               <div class="component-section">
                 <div class="section-label"><strong>Components</strong><small>Optional. Add only those used in this product.</small></div>
@@ -55,7 +55,9 @@
                   <option value="packaging">Packaging</option>
                   <option value="other">Other</option>
                 </select>
-                <div class="calc-row"><span>Component subtotal</span><strong id="componentSubtotal">$0.00</strong></div>
+                <datalist id="gemstoneSuggestions"><option value="Diamond"><option value="Sapphire"><option value="Ruby"><option value="Emerald"><option value="Amethyst"><option value="Topaz"><option value="Garnet"><option value="Pearl"><option value="Tourmaline"><option value="Opal"></datalist>
+                <div id="dealerMarkupRow" class="dealer-markup" hidden><label for="dealerMarkup">Dealer markup <span class="help" tabindex="0" aria-label="Dealer markup help">?<span class="tip">Added to live metal spot rates and entered supplier quotes for this product. Default 5%; editable.</span></span></label><div class="input-money"><input id="dealerMarkup" type="number" min="0" step="0.1" inputmode="decimal" value="5"><span>%</span></div></div>
+                <div class="calc-row"><span>Component subtotal</span><strong id="componentSubtotal">$US 0.00</strong></div>
                 <button type="button" class="btn btn-secondary" id="adoptSubtotal" disabled>Use subtotal as total cost</button>
                 <p id="componentsStatus" class="action-status" role="status" aria-live="polite"></p>
               </div>
@@ -65,15 +67,15 @@
             <summary>
               <span class="summary-heading"><span class="eyebrow">Selling prices</span><strong>Pricing</strong><small>Wholesale and retail</small></span>
               <span class="price-overview">
-                <span><small>Wholesale price</small><strong id="wholesaleOverview">—</strong></span>
-                <span><small>Retail price</small><strong id="retailOverview">—</strong></span>
+                <span><small>Wholesale price</small><strong id="wholesaleOverview">$US 0.00</strong></span>
+                <span><small>Retail price</small><strong id="retailOverview">$US 0.00</strong></span>
               </span>
               <span class="expand-control" aria-hidden="true">⌄</span>
             </summary>
             <div class="detail-body">
               <div class="field-row">
                 <label for="commercialBase">Base price <span class="help" tabindex="0" aria-label="Base price help">?<span class="tip">The operator-entered pricing floor for this product. Wholesale and retail prices are this base multiplied by their respective factors. It is independent of Cost of Goods.</span></span></label>
-                <div class="input-money"><span>$</span><input id="commercialBase" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"><small>USD per product</small></div>
+                <div class="input-money"><span>$US</span><input id="commercialBase" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"><small>per product</small></div>
                 <p class="helper">The pricing floor is entered separately from manufacturing cost.</p>
               </div>
               <button type="button" class="btn btn-secondary copy-button" id="copyCost">Use total cost as base price</button>

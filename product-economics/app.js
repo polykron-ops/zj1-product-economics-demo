@@ -3,10 +3,10 @@
 
   const KEY = 'zj1-economics-admin-trial-v2';
   const components = [
-    ['silver', 'Silver', 'Purchased silver content or silver components for one product.'],
-    ['gold', 'Gold', 'Purchased gold content or gold components for one product.'],
-    ['brass', 'Brass', 'Purchased brass content or brass components for one product.'],
-    ['gemstones', 'Gemstones', 'Stone purchase and setting costs for one product.'],
+    ['silver', 'Silver', 'Weight in grams × Gold API silver spot price per gram × dealer markup.'],
+    ['gold', 'Gold', 'Weight in grams × Gold API gold spot price per gram × dealer markup.'],
+    ['brass', 'Brass', 'Weight in grams × your supplier quote per gram × dealer markup.'],
+    ['gemstones', 'Gemstones', 'Each stone type, count and size uses its supplier quote per carat plus dealer markup. Setting labour belongs under Production.'],
     ['production', 'Production', 'Workshop labour, casting or assembly for one product.'],
     ['plating', 'Plating', 'Plating or surface-treatment cost for one product.'],
     ['packaging', 'Packaging', 'Packaging cost allocated to one product.'],
@@ -14,22 +14,132 @@
   ];
   const definitions = new Map(components.map(item => [item[0], item]));
   const active = [];
+  const rates = { silver: null, gold: null };
+  const TROY_GRAMS = 31.1034768;
+  let stoneSequence = 0;
   const $ = id => document.getElementById(id);
-  const dollars = n => '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const dollars = n => '$US ' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const number = element => element.value.trim() === '' ? null : Number(element.value);
   const valid = n => n !== null && Number.isFinite(n) && n >= 0;
   const value = id => $(id).value.trim();
   const put = (id, v) => { $(id).value = v ?? ''; };
 
   function componentInput(id) { return $('component-' + id); }
+  const entered = input => input && valid(number(input));
+  function metalAmount(id) {
+    const grams = number($('grams-' + id));
+    const spot = id === 'brass' ? number($('spot-brass')) : rates[id]?.usdPerGram ?? null;
+    const markup = number($('dealerMarkup'));
+    return valid(grams) && valid(spot) && valid(markup) ? grams * spot * (1 + markup / 100) : 0;
+  }
+  function stones() {
+    return [...document.querySelectorAll('.stone-row')].map(row => ({
+      type: row.querySelector('.stone-type').value.trim(),
+      quantity: row.querySelector('.stone-quantity').value.trim(),
+      carats: row.querySelector('.stone-carats').value.trim(),
+      pricePerCarat: row.querySelector('.stone-price').value.trim()
+    }));
+  }
+  function stoneAmount(stone) {
+    const q = Number(stone.quantity), ct = Number(stone.carats), price = Number(stone.pricePerCarat);
+    const markup = number($('dealerMarkup'));
+    return stone.quantity !== '' && stone.carats !== '' && stone.pricePerCarat !== '' && [q, ct, price, markup].every(valid) ? q * ct * price * (1 + markup / 100) : 0;
+  }
+  function componentAmount(id) {
+    if (['silver', 'gold', 'brass'].includes(id)) return metalAmount(id);
+    if (id === 'gemstones') return stones().reduce((sum, stone) => sum + stoneAmount(stone), 0);
+    const n = number(componentInput(id));
+    return valid(n) ? n : 0;
+  }
   function subtotal() {
-    return active.reduce((sum, id) => {
-      const n = number(componentInput(id));
-      return sum + (valid(n) ? n : 0);
-    }, 0);
+    return active.reduce((sum, id) => sum + componentAmount(id), 0);
   }
   function hasEnteredComponent() {
-    return active.some(id => valid(number(componentInput(id))));
+    return active.some(id => {
+      if (['silver', 'gold', 'brass'].includes(id)) return entered($('grams-' + id)) && (id === 'brass' ? entered($('spot-brass')) : !!rates[id]);
+      if (id === 'gemstones') return stones().some(stone => stone.type && stone.quantity !== '' && stone.carats !== '' && stone.pricePerCarat !== '');
+      return entered(componentInput(id));
+    });
+  }
+  function field(parent, label, id, saved = '', prefix = '', suffix = '') {
+    const wrap = document.createElement('div');
+    wrap.className = 'component-subfield';
+    const caption = document.createElement('label');
+    caption.htmlFor = id;
+    caption.textContent = label;
+    const box = document.createElement('div');
+    box.className = 'input-money';
+    if (prefix) { const p = document.createElement('span'); p.textContent = prefix; box.append(p); }
+    const input = document.createElement('input');
+    input.id = id;
+    input.type = 'number';
+    input.min = '0';
+    input.step = 'any';
+    input.inputMode = 'decimal';
+    input.value = saved;
+    box.append(input);
+    if (suffix) { const s = document.createElement('small'); s.textContent = suffix; box.append(s); }
+    wrap.append(caption, box);
+    parent.append(wrap);
+    return input;
+  }
+  async function refreshMetal(id) {
+    const state = $('rate-' + id);
+    state.textContent = 'Loading Gold API spot quote…';
+    try {
+      const symbol = id === 'gold' ? 'XAU' : 'XAG';
+      const response = await fetch('https://api.gold-api.com/price/' + symbol, { cache: 'no-store' });
+      if (!response.ok) throw new Error('Quote unavailable');
+      const data = await response.json();
+      if (data.currency !== 'USD' || !Number.isFinite(Number(data.price)) || Number(data.price) <= 0) throw new Error('Invalid quote');
+      if (!active.includes(id)) return;
+      rates[id] = { usdPerGram: Number(data.price) / TROY_GRAMS, updatedAt: data.updatedAt || new Date().toISOString(), provider: 'Gold API' };
+      update();
+    } catch {
+      if (!active.includes(id)) return;
+      rates[id] = null;
+      state.textContent = 'Gold API unavailable. Live cost paused; retry quote.';
+      update();
+    }
+  }
+  function addStone(saved = {}) {
+    const host = $('stoneRows');
+    if (!host) return;
+    const row = document.createElement('div');
+    row.className = 'stone-row';
+    const key = ++stoneSequence;
+    const typeWrap = document.createElement('div');
+    typeWrap.className = 'component-subfield';
+    const label = document.createElement('label');
+    label.htmlFor = 'stone-type-' + key;
+    label.textContent = 'Gemstone';
+    const type = document.createElement('input');
+    type.id = 'stone-type-' + key;
+    type.className = 'text-input stone-type';
+    type.placeholder = 'e.g. sapphire';
+    type.setAttribute('list', 'gemstoneSuggestions');
+    type.value = saved.type || '';
+    typeWrap.append(label, type);
+    row.append(typeWrap);
+    for (const [name, suffix, klass, val] of [
+      ['Number', 'stones', 'stone-quantity', saved.quantity],
+      ['Size each', 'ct', 'stone-carats', saved.carats],
+      ['Supplier quote', '$US / ct', 'stone-price', saved.pricePerCarat]
+    ]) {
+      const input = field(row, name, 'stone-' + klass + '-' + key, val || '', '', suffix);
+      input.classList.add(klass);
+    }
+    const result = document.createElement('strong');
+    result.className = 'stone-amount';
+    result.textContent = dollars(0);
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'link-button';
+    remove.textContent = 'Remove stone';
+    remove.addEventListener('click', () => { row.remove(); update(); });
+    row.append(result, remove);
+    host.append(row);
+    update();
   }
   function syncPicker() {
     for (const option of $('componentSelect').options) {
@@ -49,11 +159,11 @@
       host.append(empty);
     }
   }
-  function addComponent(id, amount = '') {
+  function addComponent(id, amount = '', detail = {}) {
     if (!definitions.has(id) || active.includes(id)) return;
     const [, label, description] = definitions.get(id);
     const row = document.createElement('div');
-    row.className = 'component-field';
+    row.className = 'component-field' + (['silver', 'gold', 'brass', 'gemstones'].includes(id) ? ' detailed-component' : '');
     row.dataset.component = id;
     const name = document.createElement('label');
     name.htmlFor = 'component-' + id;
@@ -68,49 +178,125 @@
     tip.textContent = description;
     help.append(tip);
     name.append(help);
-    const money = document.createElement('div');
-    money.className = 'input-money';
-    const symbol = document.createElement('span');
-    symbol.textContent = '$';
-    const input = document.createElement('input');
-    input.id = 'component-' + id;
-    input.type = 'number';
-    input.min = '0';
-    input.step = '0.01';
-    input.inputMode = 'decimal';
-    input.placeholder = '0.00';
-    input.value = amount;
-    money.append(symbol, input);
     const remove = document.createElement('button');
     remove.type = 'button';
     remove.className = 'remove-component';
     remove.textContent = '×';
     remove.setAttribute('aria-label', 'Remove ' + label);
     remove.addEventListener('click', () => removeComponent(id));
-    row.append(name, money, remove);
+    row.append(name);
+    if (['silver', 'gold', 'brass'].includes(id)) {
+      const fields = document.createElement('div');
+      fields.className = 'metal-fields';
+      field(fields, 'Weight', 'grams-' + id, detail.grams ?? '', '', 'g');
+      if (id === 'brass') {
+        field(fields, 'Supplier quote', 'spot-brass', detail.spot ?? '', '$US', '/ g');
+        const note = document.createElement('small');
+        note.className = 'rate-note';
+        note.textContent = 'Brass · supplier quote in $US/g. No standard brass spot feed.';
+        fields.append(note);
+      } else {
+        const quote = document.createElement('div');
+        quote.className = 'metal-quote';
+        const status = document.createElement('span');
+        status.id = 'rate-' + id;
+        status.className = 'rate-note';
+        status.textContent = 'Loading Gold API spot quote…';
+        const refresh = document.createElement('button');
+        refresh.type = 'button';
+        refresh.className = 'link-button';
+        refresh.textContent = 'Refresh quote';
+        refresh.addEventListener('click', () => refreshMetal(id));
+        quote.append(status, refresh);
+        fields.append(quote);
+      }
+      const amount = document.createElement('strong');
+      amount.id = 'amount-' + id;
+      amount.className = 'metal-amount';
+      amount.textContent = dollars(0);
+      fields.append(amount);
+      row.append(fields);
+    } else if (id === 'gemstones') {
+      const fields = document.createElement('div');
+      fields.className = 'gemstone-fields';
+      const note = document.createElement('p');
+      note.className = 'helper';
+      note.textContent = 'Supplier quote by type, size and quality. Number × carats per stone × $US per carat, plus dealer markup.';
+      const list = document.createElement('div');
+      list.id = 'stoneRows';
+      const add = document.createElement('button');
+      add.type = 'button';
+      add.className = 'btn btn-secondary';
+      add.textContent = '+ Add gemstone';
+      add.addEventListener('click', () => addStone());
+      fields.append(note, list, add);
+      row.append(fields);
+    } else {
+      const money = document.createElement('div');
+      money.className = 'input-money';
+      const symbol = document.createElement('span');
+      symbol.textContent = '$US';
+      const input = document.createElement('input');
+      input.id = 'component-' + id;
+      input.type = 'number';
+      input.min = '0';
+      input.step = '0.01';
+      input.inputMode = 'decimal';
+      input.placeholder = '0.00';
+      input.value = amount;
+      money.append(symbol, input);
+      row.append(money);
+    }
+    row.append(remove);
     active.push(id);
     $('componentFields').append(row);
     syncEmptyComponents();
     syncPicker();
+    $('dealerMarkupRow').hidden = !active.some(x => ['silver', 'gold', 'brass', 'gemstones'].includes(x));
+    if (id !== 'brass' && ['silver', 'gold'].includes(id)) {
+      if (detail.rate?.usdPerGram > 0) rates[id] = detail.rate;
+      else refreshMetal(id);
+    }
+    if (id === 'gemstones') for (const stone of detail.stones || []) addStone(stone);
     update();
   }
   function removeComponent(id) {
     const index = active.indexOf(id);
     if (index < 0) return;
     active.splice(index, 1);
+    if (rates[id]) rates[id] = null;
     $('componentFields').querySelector('[data-component="' + id + '"]').remove();
     syncEmptyComponents();
     syncPicker();
+    $('dealerMarkupRow').hidden = !active.some(x => ['silver', 'gold', 'brass', 'gemstones'].includes(x));
     $('componentsStatus').textContent = '';
     update();
   }
   function clearComponents() {
     active.length = 0;
+    rates.silver = rates.gold = null;
     $('componentFields').replaceChildren();
     syncEmptyComponents();
     syncPicker();
+    $('dealerMarkupRow').hidden = true;
   }
   function update() {
+    for (const id of ['gold', 'silver']) {
+      const state = $('rate-' + id);
+      if (state && rates[id]) {
+        const rate = rates[id];
+        const markup = number($('dealerMarkup'));
+        state.textContent = `Gold API spot ${dollars(rate.usdPerGram)}/g · ${new Date(rate.updatedAt).toLocaleString()}${valid(markup) ? ` · with markup ${dollars(rate.usdPerGram * (1 + markup / 100))}/g` : ''}`;
+      }
+    }
+    for (const id of ['gold', 'silver', 'brass']) {
+      const amount = $('amount-' + id);
+      if (amount) amount.textContent = dollars(metalAmount(id));
+    }
+    for (const row of document.querySelectorAll('.stone-row')) {
+      const stone = { quantity: row.querySelector('.stone-quantity').value, carats: row.querySelector('.stone-carats').value, pricePerCarat: row.querySelector('.stone-price').value };
+      row.querySelector('.stone-amount').textContent = dollars(stoneAmount(stone));
+    }
     $('componentSubtotal').textContent = dollars(subtotal());
     $('adoptSubtotal').disabled = !hasEnteredComponent();
     const cost = number($('totalCost'));
@@ -119,9 +305,9 @@
     const retail = number($('retailMultiplier'));
     const wholesaleAmount = valid(base) && valid(wholesale) ? base * wholesale : null;
     const retailAmount = valid(base) && valid(retail) ? base * retail : null;
-    $('costOverview').textContent = valid(cost) ? dollars(cost) : '—';
-    $('wholesaleOverview').textContent = valid(wholesaleAmount) ? dollars(wholesaleAmount) : '—';
-    $('retailOverview').textContent = valid(retailAmount) ? dollars(retailAmount) : '—';
+    $('costOverview').textContent = valid(cost) ? dollars(cost) : dollars(0);
+    $('wholesaleOverview').textContent = valid(wholesaleAmount) ? dollars(wholesaleAmount) : dollars(0);
+    $('retailOverview').textContent = valid(retailAmount) ? dollars(retailAmount) : dollars(0);
   }
   function entries() {
     try {
@@ -151,7 +337,12 @@
       wholesaleMultiplier: value('wholesaleMultiplier'),
       retailMultiplier: value('retailMultiplier'),
       componentTypes: active.slice(),
-      components: Object.fromEntries(active.map(id => [id, componentInput(id).value.trim()]))
+      components: Object.fromEntries(active.map(id => [id, ['silver', 'gold', 'brass', 'gemstones'].includes(id) ? componentAmount(id).toFixed(2) : componentInput(id).value.trim()])),
+      dealerMarkup: value('dealerMarkup'),
+      componentDetails: Object.fromEntries(active.map(id => [id,
+        id === 'gemstones' ? { stones: stones() } :
+        ['silver', 'gold', 'brass'].includes(id) ? { grams: value('grams-' + id), spot: id === 'brass' ? value('spot-brass') : '', rate: rates[id] } : {}
+      ]))
     };
   }
   function display(list = entries()) {
@@ -202,10 +393,11 @@
   function openEntry(item) {
     for (const id of ['productReference', 'feedback', 'totalCost', 'commercialBase', 'wholesaleMultiplier', 'retailMultiplier']) put(id, item[id]);
     clearComponents();
+    put('dealerMarkup', item.dealerMarkup ?? '5');
     const selected = Array.isArray(item.componentTypes)
       ? item.componentTypes
       : components.map(([id]) => id).filter(id => (item.components?.[id] ?? '') !== '');
-    for (const id of selected) addComponent(id, item.components?.[id] ?? '');
+    for (const id of selected) addComponent(id, item.components?.[id] ?? '', item.componentDetails?.[id] || {});
     $('costPanel').open = item.totalCost !== '' || selected.length > 0;
     $('pricingPanel').open = ['commercialBase', 'wholesaleMultiplier', 'retailMultiplier'].some(id => (item[id] ?? '') !== '');
     $('saveStatus').textContent = 'Saved entry opened. Saving again creates another copy.';
@@ -220,7 +412,13 @@
       $('costPanel').open = true;
       return;
     }
-    const optional = [...active.map(componentInput), $('commercialBase'), $('wholesaleMultiplier'), $('retailMultiplier')];
+    const optional = [
+      ...active.filter(id => !['silver', 'gold', 'brass', 'gemstones'].includes(id)).map(componentInput),
+      ...active.filter(id => ['silver', 'gold', 'brass'].includes(id)).map(id => $('grams-' + id)),
+      ...(active.includes('brass') ? [$('spot-brass')] : []),
+      ...document.querySelectorAll('.stone-quantity, .stone-carats, .stone-price'),
+      $('dealerMarkup'), $('commercialBase'), $('wholesaleMultiplier'), $('retailMultiplier')
+    ];
     if (optional.some(input => input.value.trim() !== '' && !valid(number(input)))) {
       $('saveStatus').textContent = 'Amounts and multipliers must be zero or greater.';
       return;
@@ -238,7 +436,7 @@
       $('saveStatus').textContent = 'Save at least one entry before exporting.';
       return;
     }
-    const keys = ['savedAt', 'productReference', 'totalCost', ...components.map(([id]) => id), 'componentSubtotal', 'commercialBase', 'wholesaleMultiplier', 'wholesalePrice', 'retailMultiplier', 'retailPrice', 'feedback'];
+    const keys = ['savedAt', 'productReference', 'totalCost', ...components.map(([id]) => id), 'componentSubtotal', 'dealerMarkup', 'componentDetails', 'commercialBase', 'wholesaleMultiplier', 'wholesalePrice', 'retailMultiplier', 'retailPrice', 'feedback'];
     const quote = input => {
       const raw = String(input ?? '');
       const safe = /^\s*[=+\-@]/.test(raw) ? "'" + raw : raw;
@@ -251,7 +449,7 @@
       rows.push([
         item.savedAt, item.productReference, item.totalCost,
         ...components.map(([id]) => item.components?.[id] ?? ''),
-        sum.toFixed(2), item.commercialBase, item.wholesaleMultiplier,
+        sum.toFixed(2), item.dealerMarkup ?? '', JSON.stringify(item.componentDetails || {}), item.commercialBase, item.wholesaleMultiplier,
         price('wholesaleMultiplier'), item.retailMultiplier,
         price('retailMultiplier'), item.feedback
       ].map(quote).join(','));
@@ -267,6 +465,7 @@
   }
   function resetForm() {
     for (const id of ['totalCost', 'commercialBase', 'wholesaleMultiplier', 'retailMultiplier', 'productReference', 'feedback']) put(id, '');
+    put('dealerMarkup', '5');
     clearComponents();
     $('costPanel').open = false;
     $('pricingPanel').open = false;
@@ -288,7 +487,7 @@
     if (event.target.value) addComponent(event.target.value);
   });
   document.addEventListener('input', event => {
-    if (event.target.matches('input[type=number]')) update();
+    if (event.target.matches('input[type=number], .stone-type')) update();
   });
   $('adoptSubtotal').addEventListener('click', () => {
     if (!hasEnteredComponent()) return;
