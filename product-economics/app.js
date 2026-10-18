@@ -143,13 +143,14 @@ Zircon`.split('\n');
   const relatedProducts = [];
   const tags = [];
   const SAMPLE_DESCRIPTION = 'A geometric statement necklace with alternating warm and cool metallic bars suspended from a fine chain.';
+  const SAMPLE_HEBREW_DESCRIPTION = 'שרשרת בולטת בעיצוב גיאומטרי, עם מוטות מתכתיים בגוונים חמים וקרים לסירוגין התלויים על שרשרת עדינה.';
   let descriptionEnabled = true;
   let selectedImageName = '';
   let photoUrl = null;
   const checked = id => [...$(id).querySelectorAll('input:checked')].map(input => input.value);
   const radio = name => document.querySelector(`input[name="${name}"]:checked`)?.value || '';
   function populateGemstones() {
-    for (const id of ['catalogStone1', 'catalogStone2', 'catalogStone3']) {
+    for (const id of ['catalogStone1', 'catalogStone2', 'catalogStone3', 'catalogStone4']) {
       const select = $(id);
       const none = document.createElement('option');
       none.value = '';
@@ -229,9 +230,8 @@ Zircon`.split('\n');
     descriptionEnabled = enabled;
     $('catalogDescription').disabled = !enabled;
     $('catalogDescriptionHebrew').disabled = !enabled;
-    $('toggleDescription').setAttribute('aria-pressed', String(enabled));
-    $('toggleDescription').textContent = enabled ? 'Disable description' : 'Enable description';
-    $('descriptionStatus').textContent = enabled ? 'Description enabled.' : 'Description disabled. Both texts are kept.';
+    $('toggleDescription').setAttribute('aria-checked', String(enabled));
+    $('descriptionToggleLabel').textContent = enabled ? 'On' : 'Off';
     document.querySelector('.description-section').classList.toggle('is-disabled', !enabled);
   }
   function showInput(name) { return [...$('catalogShow').querySelectorAll('input')].find(input => input.value === name); }
@@ -258,13 +258,17 @@ Zircon`.split('\n');
     $('catalogImageStatus').textContent = file ? file.name : '';
     $('descriptionSource').textContent = file ? 'New image selected. Write or edit the English description.' : 'Example draft for the sample image. Edit before use.';
     if (file && value('catalogDescription') === SAMPLE_DESCRIPTION) put('catalogDescription', '');
+    if (file && value('catalogDescriptionHebrew') === SAMPLE_HEBREW_DESCRIPTION) {
+      put('catalogDescriptionHebrew', '');
+      $('hebrewSource').textContent = 'Add a Hebrew description for the new image.';
+    }
   }
   function catalogSnapshot() {
     return {
       section: value('catalogSection'), sku: value('catalogCode'),
       categories: checked('catalogCategories'), metals: ['Gold', 'Silver'].filter((metal, i) => Number(value(i ? 'catalogSilverWeight' : 'catalogGoldWeight')) > 0),
       silverWeight: value('catalogSilverWeight'), goldWeight: value('catalogGoldWeight'), gemstonesWeight: value('catalogGemstonesWeight'), totalWeight: value('catalogTotalWeight'),
-      gemstones: ['catalogStone1', 'catalogStone2', 'catalogStone3'].map(value),
+      gemstones: ['catalogStone1', 'catalogStone2', 'catalogStone3', 'catalogStone4'].map(value),
       sizes: value('catalogSizes'),
       status: radio('catalogStatus'), show: checked('catalogShow'), tags: tags.slice(),
       description: value('catalogDescription'), descriptionHebrew: value('catalogDescriptionHebrew'), descriptionEnabled,
@@ -288,7 +292,11 @@ Zircon`.split('\n');
       ['catalogSizes','sizes'], ['catalogInternalNote','internalNote']
     ]) put(id, item[key] ?? '');
     put('catalogDescription', item.description ?? SAMPLE_DESCRIPTION);
-    put('catalogDescriptionHebrew', item.descriptionHebrew ?? '');
+    const sampleDraft = (item.description ?? SAMPLE_DESCRIPTION) === SAMPLE_DESCRIPTION;
+    put('catalogDescriptionHebrew', item.descriptionHebrew ?? (sampleDraft ? SAMPLE_HEBREW_DESCRIPTION : ''));
+    $('hebrewSource').textContent = value('catalogDescriptionHebrew') === SAMPLE_HEBREW_DESCRIPTION
+      ? 'Translated from the sample English draft. Editable.'
+      : 'Operator translation. Editable.';
     setDescriptionEnabled(item.descriptionEnabled !== false);
     put('catalogCode', item.sku ?? item.code ?? 'AVN01575');
     for (const input of $('catalogCategories').querySelectorAll('input')) input.checked = (item.categories || []).includes(input.value);
@@ -299,7 +307,7 @@ Zircon`.split('\n');
     tags.splice(0, tags.length, ...(Array.isArray(item.tags) ? item.tags : []));
     put('tagInput', '');
     renderTags();
-    for (let i = 0; i < 3; i++) put('catalogStone' + (i + 1), item.gemstones?.[i] ?? '');
+    for (let i = 0; i < 4; i++) put('catalogStone' + (i + 1), item.gemstones?.[i] ?? '');
     relatedProducts.splice(0, relatedProducts.length, ...(Array.isArray(item.relatedProducts) ? item.relatedProducts : []));
     renderRelatedProducts();
     $('catalogImage').value = '';
@@ -756,7 +764,7 @@ Zircon`.split('\n');
       $('saveStatus').textContent = 'Save at least one entry before exporting.';
       return;
     }
-    const catalogKeys = ['section','categories','sku','metals','silverWeight','goldWeight','gemstonesWeight','totalWeight','gemstone1','gemstone2','gemstone3','sizes','status','show','tags','description','descriptionHebrew','descriptionEnabled','internalNote','imageFileName','relatedProducts'];
+    const catalogKeys = ['section','categories','sku','metals','silverWeight','goldWeight','gemstonesWeight','totalWeight','gemstone1','gemstone2','gemstone3','gemstone4','sizes','status','show','tags','description','descriptionHebrew','descriptionEnabled','internalNote','imageFileName','relatedProducts'];
     const keys = ['savedAt', 'productReference', ...catalogKeys, 'totalCost', ...components.map(([id]) => id), 'componentSubtotal', 'dealerMarkup', 'componentDetails', 'commercialBase', 'wholesaleMultiplier', 'wholesalePrice', 'retailMultiplier', 'retailPrice', 'feedback'];
     const quote = input => {
       const raw = String(input ?? '');
@@ -769,7 +777,7 @@ Zircon`.split('\n');
       const price = id => item.commercialBase !== '' && item[id] !== '' ? (Number(item.commercialBase) * Number(item[id])).toFixed(2) : '';
       const catalog = item.catalog || {};
       const catalogValues = [catalog.section, (catalog.categories || []).join('; '), catalog.sku ?? catalog.code, (catalog.metals || []).join('; '), catalog.silverWeight, catalog.goldWeight, catalog.gemstonesWeight, catalog.totalWeight,
-        ...(catalog.gemstones || ['', '', '']), catalog.sizes, catalog.status, (catalog.show || [catalog.audience || 'All users', 'Retail']).join('; '), (catalog.tags || []).join('; '), catalog.description, catalog.descriptionHebrew, catalog.descriptionEnabled !== false, catalog.internalNote, catalog.imageFileName, (catalog.relatedProducts || []).join('; ')];
+        ...Array.from({ length: 4 }, (_, i) => catalog.gemstones?.[i] ?? ''), catalog.sizes, catalog.status, (catalog.show || [catalog.audience || 'All users', 'Retail']).join('; '), (catalog.tags || []).join('; '), catalog.description, catalog.descriptionHebrew, catalog.descriptionEnabled !== false, catalog.internalNote, catalog.imageFileName, (catalog.relatedProducts || []).join('; ')];
       rows.push([
         item.savedAt, item.productReference, ...catalogValues, item.totalCost,
         ...components.map(([id]) => item.components?.[id] ?? ''),
@@ -823,6 +831,15 @@ Zircon`.split('\n');
   $('tagInput').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); addTag(); } });
   $('presetTags').addEventListener('click', event => { const button = event.target.closest('button[data-tag]'); if (button) togglePresetTag(button.dataset.tag); });
   $('toggleDescription').addEventListener('click', () => setDescriptionEnabled(!descriptionEnabled));
+  $('catalogDescription').addEventListener('input', () => {
+    if (value('catalogDescription') === SAMPLE_DESCRIPTION) {
+      if (!value('catalogDescriptionHebrew')) put('catalogDescriptionHebrew', SAMPLE_HEBREW_DESCRIPTION);
+      $('hebrewSource').textContent = 'Translated from the sample English draft. Editable.';
+    } else if (value('catalogDescriptionHebrew') === SAMPLE_HEBREW_DESCRIPTION) {
+      put('catalogDescriptionHebrew', '');
+      $('hebrewSource').textContent = 'English draft changed. Enter a Hebrew translation.';
+    }
+  });
   $('catalogImage').addEventListener('change', event => {
     const file = event.target.files?.[0];
     if (file && !file.type.startsWith('image/')) {

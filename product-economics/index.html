@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Product details | Zuman Admin Trial</title>
   <meta name="description" content="Standalone Medusa-style product cost and pricing trial.">
-  <link rel="stylesheet" href="./style.css?v=2026-10-18-4">
-  <script src="./app.js?v=2026-10-18-4" defer></script>
+  <link rel="stylesheet" href="./style.css?v=2026-10-18-5">
+  <script src="./app.js?v=2026-10-18-5" defer></script>
 </head>
 <body>
   <div class="trial-rail">
@@ -29,20 +29,6 @@
             <div class="image-wrap"><img id="productPhoto" src="./sample-product.png" alt="Sample mixed-metal necklace supplied for the prototype"></div>
             <div class="image-caption"><strong>SKU: <span id="pictureSku">AVN01575</span></strong><label for="catalogImage" class="image-upload">Change image</label><input id="catalogImage" class="visually-hidden" type="file" accept="image/*"><span id="catalogImageStatus" class="image-status" role="status" aria-live="polite"></span></div>
           </section>
-          <details id="costPanel" class="card detail-card cost-card">
-            <summary>
-              <span class="summary-heading"><span class="eyebrow">Product cost</span><strong>Cost of Goods</strong><small>Total product cost</small></span>
-              <span class="summary-bottom"><strong id="costOverview" class="overview-value">$US 0.00</strong><span class="expand-control" aria-hidden="true">⌄</span></span>
-            </summary>
-            <div class="detail-body">
-              <div class="field-row">
-                <label for="totalCost">Total Product Cost <span class="help" tabindex="0" aria-label="Total Product Cost help">?<span class="tip">Your known manufacturing cost for one product. Optional components do not change this number unless you apply their subtotal.</span></span></label>
-                <div class="input-money"><span>$US</span><input id="totalCost" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"><small>per product</small></div>
-              </div>
-              <p class="helper">Optional component estimates are in Cost components below.</p>
-              <button type="button" class="btn btn-secondary" id="openComponents">Add cost components</button>
-            </div>
-          </details>
           <details id="pricingPanel" class="card detail-card pricing-card">
             <summary>
               <span class="summary-heading"><span class="eyebrow">Selling prices</span><strong>Pricing</strong><small>Wholesale and retail</small></span>
@@ -67,10 +53,24 @@
               <p class="helper">No multiplier is prefilled. These are trial calculations; taxes, discounts and country rules are excluded.</p>
             </div>
           </details>
+          <details id="costPanel" class="card detail-card cost-card">
+            <summary>
+              <span class="summary-heading"><span class="eyebrow">Product cost</span><strong>Cost of Goods</strong><small>Total product cost</small></span>
+              <span class="summary-bottom"><strong id="costOverview" class="overview-value">$US 0.00</strong><span class="expand-control" aria-hidden="true">⌄</span></span>
+            </summary>
+            <div class="detail-body">
+              <div class="field-row">
+                <label for="totalCost">Total Product Cost <span class="help" tabindex="0" aria-label="Total Product Cost help">?<span class="tip">Your known manufacturing cost for one product. Optional components do not change this number unless you apply their subtotal.</span></span></label>
+                <div class="input-money"><span>$US</span><input id="totalCost" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"><small>per product</small></div>
+              </div>
+              <p class="helper">Optional component estimates are in Cost components below.</p>
+              <button type="button" class="btn btn-secondary" id="openComponents">Add cost components</button>
+            </div>
+          </details>
         </div>
         <div class="lower-grid">
         <details id="catalogPanel" class="card catalog-card">
-          <summary><span><span class="eyebrow">Current product panel</span><strong>Product details</strong><small>Catalogue fields from the existing site</small></span><span class="expand-control" aria-hidden="true">⌄</span></summary>
+          <summary><span><span class="eyebrow">Trial product panel</span><strong>Product details</strong></span><span class="expand-control" aria-hidden="true">⌄</span></summary>
           <div class="catalog-body">
             <div class="catalog-grid">
               <div class="identity-row"><div class="field-row"><label for="catalogCode">SKU</label><input id="catalogCode" class="text-input" maxlength="80" value="AVN01575"></div><div class="field-row"><label for="catalogSection">Section</label><select id="catalogSection" class="text-input"><option value="">Choose section</option><option value="Rings">Rings</option><option value="Necklaces">Necklaces</option><option value="Earrings">Earrings</option><option value="Bracelets">Bracelets</option><option value="Watches">Watches</option><option value="Pins &amp; Brooches">Pins &amp; Brooches</option><option value="Religious">Religious</option><option value="Man's Jewelry">Man's Jewelry</option><option value="Beads">Beads</option><option value="Closeout">Closeout</option></select></div><div class="field-row"><label for="catalogSizes">Sizes</label><input id="catalogSizes" class="text-input" list="sizeSuggestions" placeholder="None or size labels"><datalist id="sizeSuggestions"><option value="None"></datalist></div></div>
@@ -78,11 +78,11 @@
                 <label><input type="checkbox" value="Ancient roman glass">Ancient roman glass</label><label><input type="checkbox" value="Glass">Glass</label><label><input type="checkbox" value="Gold">Gold</label><label><input type="checkbox" value="Hearts & Love">Hearts &amp; Love</label><label><input type="checkbox" value="Religious">Religious</label><label><input type="checkbox" value="Rings">Rings</label><label><input type="checkbox" value="Silver & Gold">Silver &amp; Gold</label><label><input type="checkbox" value="Solid">Solid</label><label><input type="checkbox" value="Sterling Silver">Sterling Silver</label><label><input type="checkbox" value="Sterling with pearls">Sterling with pearls</label><label><input type="checkbox" value="Stones incorporated">Stones incorporated</label><label><input type="checkbox" value="Watches">Watches</label>
               </div></fieldset>
               <div class="weight-row"><div class="field-row"><label for="catalogSilverWeight">Silver weight</label><div class="input-money"><input id="catalogSilverWeight" type="number" min="0" step="any" inputmode="decimal"><small>g</small></div></div><div class="field-row"><label for="catalogGoldWeight">Gold weight</label><div class="input-money"><input id="catalogGoldWeight" type="number" min="0" step="any" inputmode="decimal"><small>g</small></div></div><div class="field-row"><label for="catalogGemstonesWeight">Gemstones weight</label><div class="input-money"><input id="catalogGemstonesWeight" type="number" min="0" step="any" inputmode="decimal"><small>g</small></div></div><div class="field-row"><label for="catalogTotalWeight">Total weight</label><div class="input-money"><input id="catalogTotalWeight" type="number" min="0" step="any" inputmode="decimal"><small>g</small></div></div></div>
-              <div class="field-row span-full"><label>Gemstones</label><div class="catalog-stone-grid"><select id="catalogStone1" class="text-input" aria-label="Gemstone 1"></select><select id="catalogStone2" class="text-input" aria-label="Gemstone 2"></select><select id="catalogStone3" class="text-input" aria-label="Gemstone 3"></select></div></div>
+              <div class="field-row span-full"><label>Gemstones</label><div class="catalog-stone-grid"><select id="catalogStone1" class="text-input" aria-label="Gemstone 1"></select><select id="catalogStone2" class="text-input" aria-label="Gemstone 2"></select><select id="catalogStone3" class="text-input" aria-label="Gemstone 3"></select><select id="catalogStone4" class="text-input" aria-label="Gemstone 4"></select></div></div>
               <fieldset class="catalog-fieldset span-full"><legend>Show</legend><div class="choice-inline"><label><input type="radio" name="catalogStatus" value="Active" checked>Active</label><label><input type="radio" name="catalogStatus" value="Inactive">Inactive</label></div><div class="show-choices" id="catalogShow"><label><input type="checkbox" value="All users" checked>All users</label><label><input type="checkbox" value="Only registered">Only Registered</label><label><input type="checkbox" value="Wholesale">Wholesale</label><label><input type="checkbox" value="Retail" checked>Retail</label></div><p id="showStatus" class="helper" role="status" aria-live="polite">Wholesale requires Only Registered.</p></fieldset>
-              <div class="field-row span-full"><label for="tagInput">Tags</label><div class="related-input"><input id="tagInput" class="text-input" maxlength="60" placeholder="Add a tag"><button type="button" id="addTag" class="btn btn-secondary">Add tag</button></div><div id="presetTags" class="preset-tags" aria-label="Suggested tags"><button type="button" data-tag="Necklace">Necklace</button><button type="button" data-tag="Mixed metal">Mixed metal</button><button type="button" data-tag="Geometric">Geometric</button><button type="button" data-tag="Statement">Statement</button><button type="button" data-tag="Gold tone">Gold tone</button><button type="button" data-tag="Silver tone">Silver tone</button></div><div id="tagList" class="related-list" aria-live="polite"></div></div>
-              <div class="field-row span-full description-section"><div class="description-heading"><span class="derived-label">Description</span><button type="button" id="toggleDescription" class="btn btn-secondary" aria-pressed="true">Disable description</button></div><div class="description-grid"><div><label for="catalogDescription">English · AI image draft</label><textarea id="catalogDescription" class="text-input" rows="5">A geometric statement necklace with alternating warm and cool metallic bars suspended from a fine chain.</textarea><p id="descriptionSource" class="helper">Example draft for the sample image. Edit before use.</p></div><div><label for="catalogDescriptionHebrew">עברית · operator description</label><textarea id="catalogDescriptionHebrew" class="text-input" rows="5" lang="he" dir="rtl" placeholder="תיאור המוצר בעברית"></textarea></div></div><p id="descriptionStatus" class="helper" role="status" aria-live="polite">Description enabled.</p></div>
-              <div class="field-row span-full"><label for="catalogInternalNote">Internal note · admin</label><textarea id="catalogInternalNote" class="text-input" rows="3"></textarea></div>
+              <div class="field-row span-full"><label for="tagInput">Tags</label><div class="related-input"><input id="tagInput" class="text-input" maxlength="60" placeholder="Add a tag"><button type="button" id="addTag" class="btn btn-secondary">Add tag</button></div><div id="presetTags" class="preset-tags" aria-label="Suggested tags"><button type="button" data-tag="Necklace">Necklace</button><button type="button" data-tag="Mixed metal">Mixed metal</button><button type="button" data-tag="Geometric">Geometric</button><button type="button" data-tag="Statement">Statement</button><button type="button" data-tag="Gold tone">Gold tone</button><button type="button" data-tag="Silver tone">Silver tone</button><button type="button" data-tag="Bars">Bars</button><button type="button" data-tag="Pendant">Pendant</button></div><div id="tagList" class="related-list" aria-live="polite"></div></div>
+              <div class="field-row span-full description-section"><div class="description-heading"><span class="derived-label">Description</span><button type="button" id="toggleDescription" class="description-switch" role="switch" aria-label="Description" aria-checked="true"><span class="switch-track" aria-hidden="true"><span class="switch-knob"></span></span><span id="descriptionToggleLabel">On</span></button></div><div class="description-grid"><div><label for="catalogDescription">English · AI image draft</label><textarea id="catalogDescription" class="text-input" rows="5">A geometric statement necklace with alternating warm and cool metallic bars suspended from a fine chain.</textarea><p id="descriptionSource" class="helper">Example draft for the sample image. Edit before use.</p></div><div><label for="catalogDescriptionHebrew">עברית · translation of English draft</label><textarea id="catalogDescriptionHebrew" class="text-input" rows="5" lang="he" dir="rtl">שרשרת בולטת בעיצוב גיאומטרי, עם מוטות מתכתיים בגוונים חמים וקרים לסירוגין התלויים על שרשרת עדינה.</textarea><p id="hebrewSource" class="helper">Translated from the sample English draft. Editable.</p></div></div></div>
+              <div class="field-row span-full"><label for="catalogInternalNote">Internal note, invisible to public</label><textarea id="catalogInternalNote" class="text-input" rows="3"></textarea></div>
               <div class="field-row span-full"><label for="relatedProductInput">Related products</label><div class="related-input"><input id="relatedProductInput" class="text-input" maxlength="80" placeholder="Enter related SKU"><button type="button" id="addRelatedProduct" class="btn btn-secondary">Add</button></div><div id="relatedProducts" class="related-list"></div></div>
             </div>
           </div>
