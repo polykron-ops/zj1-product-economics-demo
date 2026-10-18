@@ -117,6 +117,8 @@ details[open] > summary .expand-control { transform: rotate(180deg); }
 .stone-row .stone-amount { justify-self: start; font-size: 12px; }
 .stone-row .link-button { justify-self: end; }
 .stone-row .text-input { height: 33px; min-height: 33px; }
+.legacy-field { grid-column: 1 / -1; padding-top: 8px; border-top: 1px solid #eeeef1; }
+.legacy-field small { display: block; color: #81838b; font-size: 10px; margin-top: 5px; }
 .remove-component { width: 27px; height: 27px; border: 0; background: transparent; color: #a1a3aa; border-radius: 4px; font-size: 19px; line-height: 1; }
 .remove-component:hover, .remove-component:focus-visible { color: #3c3e44; background: #f1f1f3; }
 .select-label { display: block; color: #72747b; font-size: 10px; font-weight: 600; margin-bottom: 5px; }

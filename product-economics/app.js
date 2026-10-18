@@ -26,11 +26,12 @@
 
   function componentInput(id) { return $('component-' + id); }
   const entered = input => input && valid(number(input));
+  const legacyAmount = id => { const input = $('legacy-' + id); return entered(input) ? number(input) : 0; };
   function metalAmount(id) {
     const grams = number($('grams-' + id));
     const spot = id === 'brass' ? number($('spot-brass')) : rates[id]?.usdPerGram ?? null;
     const markup = number($('dealerMarkup'));
-    return valid(grams) && valid(spot) && valid(markup) ? grams * spot * (1 + markup / 100) : 0;
+    return valid(grams) && valid(spot) && valid(markup) ? grams * spot * (1 + markup / 100) : legacyAmount(id);
   }
   function stones() {
     return [...document.querySelectorAll('.stone-row')].map(row => ({
@@ -47,7 +48,8 @@
   }
   function componentAmount(id) {
     if (['silver', 'gold', 'brass'].includes(id)) return metalAmount(id);
-    if (id === 'gemstones') return stones().reduce((sum, stone) => sum + stoneAmount(stone), 0);
+    if (id === 'gemstones') return stones().some(stone => stone.type && stone.quantity !== '' && stone.carats !== '' && stone.pricePerCarat !== '')
+      ? stones().reduce((sum, stone) => sum + stoneAmount(stone), 0) : legacyAmount(id);
     const n = number(componentInput(id));
     return valid(n) ? n : 0;
   }
@@ -56,8 +58,8 @@
   }
   function hasEnteredComponent() {
     return active.some(id => {
-      if (['silver', 'gold', 'brass'].includes(id)) return entered($('grams-' + id)) && (id === 'brass' ? entered($('spot-brass')) : !!rates[id]);
-      if (id === 'gemstones') return stones().some(stone => stone.type && stone.quantity !== '' && stone.carats !== '' && stone.pricePerCarat !== '');
+      if (['silver', 'gold', 'brass'].includes(id)) return entered($('legacy-' + id)) || (entered($('grams-' + id)) && (id === 'brass' ? entered($('spot-brass')) : !!rates[id]));
+      if (id === 'gemstones') return entered($('legacy-' + id)) || stones().some(stone => stone.type && [stone.quantity, stone.carats, stone.pricePerCarat].every(v => v !== '' && valid(Number(v))));
       return entered(componentInput(id));
     });
   }
@@ -247,6 +249,15 @@
       money.append(symbol, input);
       row.append(money);
     }
+    if (['silver', 'gold', 'brass', 'gemstones'].includes(id) && ((detail.legacyAmount ?? '') !== '' || (amount !== '' && !Object.keys(detail).length))) {
+      const legacy = document.createElement('div');
+      legacy.className = 'legacy-field';
+      const note = document.createElement('small');
+      note.textContent = 'Earlier saved amount. Enter the detailed inputs above to replace it.';
+      field(legacy, 'Previously entered amount', 'legacy-' + id, detail.legacyAmount ?? amount, '$US');
+      legacy.append(note);
+      row.append(legacy);
+    }
     row.append(remove);
     active.push(id);
     $('componentFields').append(row);
@@ -340,8 +351,8 @@
       components: Object.fromEntries(active.map(id => [id, ['silver', 'gold', 'brass', 'gemstones'].includes(id) ? componentAmount(id).toFixed(2) : componentInput(id).value.trim()])),
       dealerMarkup: value('dealerMarkup'),
       componentDetails: Object.fromEntries(active.map(id => [id,
-        id === 'gemstones' ? { stones: stones() } :
-        ['silver', 'gold', 'brass'].includes(id) ? { grams: value('grams-' + id), spot: id === 'brass' ? value('spot-brass') : '', rate: rates[id] } : {}
+        id === 'gemstones' ? { stones: stones(), legacyAmount: $('legacy-' + id)?.value ?? '' } :
+        ['silver', 'gold', 'brass'].includes(id) ? { grams: value('grams-' + id), spot: id === 'brass' ? value('spot-brass') : '', rate: rates[id], legacyAmount: $('legacy-' + id)?.value ?? '' } : {}
       ]))
     };
   }
@@ -417,6 +428,7 @@
       ...active.filter(id => ['silver', 'gold', 'brass'].includes(id)).map(id => $('grams-' + id)),
       ...(active.includes('brass') ? [$('spot-brass')] : []),
       ...document.querySelectorAll('.stone-quantity, .stone-carats, .stone-price'),
+      ...document.querySelectorAll('[id^=legacy-]'),
       $('dealerMarkup'), $('commercialBase'), $('wholesaleMultiplier'), $('retailMultiplier')
     ];
     if (optional.some(input => input.value.trim() !== '' && !valid(number(input)))) {
