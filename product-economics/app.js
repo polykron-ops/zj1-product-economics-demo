@@ -141,6 +141,7 @@ Zircon`.split('\n');
   const value = id => $(id).value.trim();
   const put = (id, v) => { $(id).value = v ?? ''; };
   const relatedProducts = [];
+  const tags = [];
   let selectedImageName = '';
   let photoUrl = null;
   const checked = id => [...$(id).querySelectorAll('input:checked')].map(input => input.value);
@@ -187,6 +188,66 @@ Zircon`.split('\n');
     put('relatedProductInput', '');
     renderRelatedProducts();
   }
+  function renderTags() {
+    const host = $('tagList');
+    host.replaceChildren();
+    for (const tag of tags) {
+      const item = document.createElement('span');
+      item.className = 'related-item';
+      const name = document.createElement('span');
+      name.textContent = tag;
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.textContent = '×';
+      remove.setAttribute('aria-label', 'Remove tag ' + tag);
+      remove.addEventListener('click', () => {
+        tags.splice(tags.indexOf(tag), 1);
+        renderTags();
+      });
+      item.append(name, remove);
+      host.append(item);
+    }
+  }
+  function addTag() {
+    const tag = value('tagInput');
+    if (!tag || tags.some(item => item.toLowerCase() === tag.toLowerCase())) return;
+    tags.push(tag);
+    put('tagInput', '');
+    renderTags();
+  }
+  function showInput(name) { return [...$('catalogShow').querySelectorAll('input')].find(input => input.value === name); }
+  function updateShow(changed) {
+    const all = showInput('All users');
+    const registered = showInput('Only registered');
+    const wholesale = showInput('Wholesale');
+    const retail = showInput('Retail');
+    if (changed === wholesale && wholesale.checked) { registered.checked = true; all.checked = false; }
+    if (changed === all && all.checked) { registered.checked = false; wholesale.checked = false; }
+    if (changed === registered && registered.checked) all.checked = false;
+    if (changed === registered && !registered.checked && wholesale.checked) wholesale.checked = false;
+    if (!all.checked && !registered.checked) (changed === registered ? registered : all).checked = true;
+    if (!wholesale.checked && !retail.checked) (changed === wholesale ? wholesale : retail).checked = true;
+    if (wholesale.checked && !registered.checked) { registered.checked = true; all.checked = false; }
+    $('showStatus').textContent = wholesale.checked ? 'Wholesale is shown only to registered users.' : 'Wholesale requires Only Registered.';
+  }
+  function renderMetals() {
+    const host = $('metalIndicators');
+    host.replaceChildren();
+    for (const [id, label] of [['catalogGoldWeight','Gold'], ['catalogSilverWeight','Silver']]) {
+      if (Number(value(id)) > 0) {
+        const chip = document.createElement('span');
+        chip.className = 'metal-chip';
+        chip.textContent = label;
+        host.append(chip);
+      }
+    }
+    if (!host.childElementCount) {
+      const hint = document.createElement('span');
+      hint.className = 'helper';
+      hint.textContent = 'Enter gold or silver weight to mark the metal.';
+      host.append(hint);
+    }
+  }
   function setProductPhoto(file) {
     if (photoUrl) URL.revokeObjectURL(photoUrl);
     photoUrl = file ? URL.createObjectURL(file) : null;
@@ -200,12 +261,12 @@ Zircon`.split('\n');
   }
   function catalogSnapshot() {
     return {
-      section: value('catalogSection'), code: value('catalogCode'),
-      categories: checked('catalogCategories'), metals: checked('catalogMetals'),
+      section: value('catalogSection'), sku: value('catalogCode'),
+      categories: checked('catalogCategories'), metals: ['Gold', 'Silver'].filter((metal, i) => Number(value(i ? 'catalogSilverWeight' : 'catalogGoldWeight')) > 0),
       totalWeight: value('catalogTotalWeight'), goldWeight: value('catalogGoldWeight'), silverWeight: value('catalogSilverWeight'),
       gemstones: ['catalogStone1', 'catalogStone2', 'catalogStone3'].map(value),
       currentSitePrice: value('catalogPrice'), sizes: value('catalogSizes'),
-      status: radio('catalogStatus'), audience: radio('catalogAudience'), websites: checked('catalogWebsites'),
+      status: radio('catalogStatus'), show: checked('catalogShow'), tags: tags.slice(),
       description: value('catalogDescription'), internalNote: value('catalogInternalNote'),
       imageFileName: selectedImageName, relatedProducts: relatedProducts.slice()
     };
@@ -221,18 +282,20 @@ Zircon`.split('\n');
       section.append(previous);
     }
     for (const [id, key] of [
-      ['catalogSection','section'], ['catalogCode','code'], ['catalogTotalWeight','totalWeight'],
+      ['catalogSection','section'], ['catalogTotalWeight','totalWeight'],
       ['catalogGoldWeight','goldWeight'], ['catalogSilverWeight','silverWeight'], ['catalogPrice','currentSitePrice'],
       ['catalogSizes','sizes'], ['catalogDescription','description'], ['catalogInternalNote','internalNote']
     ]) put(id, item[key] ?? '');
-    for (const [id, key] of [['catalogCategories','categories'], ['catalogMetals','metals'], ['catalogWebsites','websites']]) {
-      const values = Array.isArray(item[key]) ? item[key] : key === 'websites' ? ['General'] : [];
-      for (const input of $(id).querySelectorAll('input')) input.checked = values.includes(input.value);
-    }
-    for (const name of ['catalogStatus','catalogAudience']) {
-      const selected = item[name === 'catalogStatus' ? 'status' : 'audience'] || (name === 'catalogStatus' ? 'Active' : 'All users');
-      for (const input of document.querySelectorAll(`input[name="${name}"]`)) input.checked = input.value === selected;
-    }
+    put('catalogCode', item.sku ?? item.code ?? 'AVN01575');
+    for (const input of $('catalogCategories').querySelectorAll('input')) input.checked = (item.categories || []).includes(input.value);
+    for (const input of document.querySelectorAll('input[name="catalogStatus"]')) input.checked = input.value === (item.status || 'Active');
+    const savedShow = Array.isArray(item.show) ? item.show : [item.audience || 'All users', 'Retail'];
+    for (const input of $('catalogShow').querySelectorAll('input')) input.checked = savedShow.includes(input.value);
+    updateShow();
+    tags.splice(0, tags.length, ...(Array.isArray(item.tags) ? item.tags : []));
+    put('tagInput', '');
+    renderTags();
+    renderMetals();
     for (let i = 0; i < 3; i++) put('catalogStone' + (i + 1), item.gemstones?.[i] ?? '');
     relatedProducts.splice(0, relatedProducts.length, ...(Array.isArray(item.relatedProducts) ? item.relatedProducts : []));
     renderRelatedProducts();
@@ -240,7 +303,7 @@ Zircon`.split('\n');
     setProductPhoto(null);
     selectedImageName = item.imageFileName || '';
     if (selectedImageName) $('catalogImageStatus').textContent = `Saved file name: ${selectedImageName}. Re-select the file to preview it.`;
-    $('productCodePreview').textContent = value('catalogCode') || 'DEMO-001';
+    $('productCodePreview').textContent = value('catalogCode') || 'AVN01575';
   }
 
   function componentInput(id) { return $('component-' + id); }
@@ -525,6 +588,7 @@ Zircon`.split('\n');
     $('dealerMarkupRow').hidden = true;
   }
   function update() {
+    renderMetals();
     for (const id of ['gold', 'silver']) {
       const state = $('rate-' + id);
       if (state && rates[id]) {
@@ -607,7 +671,7 @@ Zircon`.split('\n');
       const head = document.createElement('div');
       head.className = 'entry-head';
       const title = document.createElement('strong');
-      title.textContent = item.productReference || item.catalog?.code || 'Sample product';
+      title.textContent = item.productReference || item.catalog?.sku || item.catalog?.code || 'Sample product';
       const cost = document.createElement('strong');
       cost.textContent = item.totalCost !== '' && valid(Number(item.totalCost)) ? dollars(Number(item.totalCost)) : '—';
       head.append(title, cost);
@@ -686,7 +750,7 @@ Zircon`.split('\n');
       $('saveStatus').textContent = 'Save at least one entry before exporting.';
       return;
     }
-    const catalogKeys = ['section','categories','code','metals','totalWeight','goldWeight','silverWeight','gemstone1','gemstone2','gemstone3','currentSitePrice','sizes','status','audience','websites','description','internalNote','imageFileName','relatedProducts'];
+    const catalogKeys = ['section','categories','sku','metals','totalWeight','goldWeight','silverWeight','gemstone1','gemstone2','gemstone3','currentSitePrice','sizes','status','show','tags','description','internalNote','imageFileName','relatedProducts'];
     const keys = ['savedAt', 'productReference', ...catalogKeys, 'totalCost', ...components.map(([id]) => id), 'componentSubtotal', 'dealerMarkup', 'componentDetails', 'commercialBase', 'wholesaleMultiplier', 'wholesalePrice', 'retailMultiplier', 'retailPrice', 'feedback'];
     const quote = input => {
       const raw = String(input ?? '');
@@ -698,8 +762,8 @@ Zircon`.split('\n');
       const sum = components.reduce((total, [id]) => total + (Number(item.components?.[id]) || 0), 0);
       const price = id => item.commercialBase !== '' && item[id] !== '' ? (Number(item.commercialBase) * Number(item[id])).toFixed(2) : '';
       const catalog = item.catalog || {};
-      const catalogValues = [catalog.section, (catalog.categories || []).join('; '), catalog.code, (catalog.metals || []).join('; '), catalog.totalWeight, catalog.goldWeight, catalog.silverWeight,
-        ...(catalog.gemstones || ['', '', '']), catalog.currentSitePrice, catalog.sizes, catalog.status, catalog.audience, (catalog.websites || []).join('; '), catalog.description, catalog.internalNote, catalog.imageFileName, (catalog.relatedProducts || []).join('; ')];
+      const catalogValues = [catalog.section, (catalog.categories || []).join('; '), catalog.sku ?? catalog.code, (catalog.metals || []).join('; '), catalog.totalWeight, catalog.goldWeight, catalog.silverWeight,
+        ...(catalog.gemstones || ['', '', '']), catalog.currentSitePrice, catalog.sizes, catalog.status, (catalog.show || [catalog.audience || 'All users', 'Retail']).join('; '), (catalog.tags || []).join('; '), catalog.description, catalog.internalNote, catalog.imageFileName, (catalog.relatedProducts || []).join('; ')];
       rows.push([
         item.savedAt, item.productReference, ...catalogValues, item.totalCost,
         ...components.map(([id]) => item.components?.[id] ?? ''),
@@ -747,7 +811,10 @@ Zircon`.split('\n');
     $('componentPanel').open = true;
     $('componentPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
-  $('catalogCode').addEventListener('input', () => { $('productCodePreview').textContent = value('catalogCode') || 'DEMO-001'; });
+  $('catalogCode').addEventListener('input', () => { $('productCodePreview').textContent = value('catalogCode') || 'AVN01575'; });
+  $('catalogShow').addEventListener('change', event => { if (event.target.matches('input[type=checkbox]')) updateShow(event.target); });
+  $('addTag').addEventListener('click', addTag);
+  $('tagInput').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); addTag(); } });
   $('catalogImage').addEventListener('change', event => {
     const file = event.target.files?.[0];
     if (file && !file.type.startsWith('image/')) {
