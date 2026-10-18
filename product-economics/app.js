@@ -249,24 +249,6 @@ Zircon`.split('\n');
     if (wholesale.checked && !registered.checked) { registered.checked = true; all.checked = false; }
     $('showStatus').textContent = wholesale.checked ? 'Wholesale is shown only to registered users.' : 'Wholesale requires Only Registered.';
   }
-  function renderMetals() {
-    const host = $('metalIndicators');
-    host.replaceChildren();
-    for (const [id, label] of [['catalogGoldWeight','Gold'], ['catalogSilverWeight','Silver']]) {
-      if (Number(value(id)) > 0) {
-        const chip = document.createElement('span');
-        chip.className = 'metal-chip';
-        chip.textContent = label;
-        host.append(chip);
-      }
-    }
-    if (!host.childElementCount) {
-      const hint = document.createElement('span');
-      hint.className = 'helper';
-      hint.textContent = 'Enter gold or silver weight to mark the metal.';
-      host.append(hint);
-    }
-  }
   function setProductPhoto(file) {
     if (photoUrl) URL.revokeObjectURL(photoUrl);
     photoUrl = file ? URL.createObjectURL(file) : null;
@@ -281,9 +263,9 @@ Zircon`.split('\n');
     return {
       section: value('catalogSection'), sku: value('catalogCode'),
       categories: checked('catalogCategories'), metals: ['Gold', 'Silver'].filter((metal, i) => Number(value(i ? 'catalogSilverWeight' : 'catalogGoldWeight')) > 0),
-      totalWeight: value('catalogTotalWeight'), goldWeight: value('catalogGoldWeight'), silverWeight: value('catalogSilverWeight'),
+      silverWeight: value('catalogSilverWeight'), goldWeight: value('catalogGoldWeight'), gemstonesWeight: value('catalogGemstonesWeight'), totalWeight: value('catalogTotalWeight'),
       gemstones: ['catalogStone1', 'catalogStone2', 'catalogStone3'].map(value),
-      currentSitePrice: value('catalogPrice'), sizes: value('catalogSizes'),
+      sizes: value('catalogSizes'),
       status: radio('catalogStatus'), show: checked('catalogShow'), tags: tags.slice(),
       description: value('catalogDescription'), descriptionHebrew: value('catalogDescriptionHebrew'), descriptionEnabled,
       internalNote: value('catalogInternalNote'),
@@ -301,8 +283,8 @@ Zircon`.split('\n');
       section.append(previous);
     }
     for (const [id, key] of [
-      ['catalogSection','section'], ['catalogTotalWeight','totalWeight'],
-      ['catalogGoldWeight','goldWeight'], ['catalogSilverWeight','silverWeight'], ['catalogPrice','currentSitePrice'],
+      ['catalogSection','section'], ['catalogSilverWeight','silverWeight'], ['catalogGoldWeight','goldWeight'],
+      ['catalogGemstonesWeight','gemstonesWeight'], ['catalogTotalWeight','totalWeight'],
       ['catalogSizes','sizes'], ['catalogInternalNote','internalNote']
     ]) put(id, item[key] ?? '');
     put('catalogDescription', item.description ?? SAMPLE_DESCRIPTION);
@@ -317,7 +299,6 @@ Zircon`.split('\n');
     tags.splice(0, tags.length, ...(Array.isArray(item.tags) ? item.tags : []));
     put('tagInput', '');
     renderTags();
-    renderMetals();
     for (let i = 0; i < 3; i++) put('catalogStone' + (i + 1), item.gemstones?.[i] ?? '');
     relatedProducts.splice(0, relatedProducts.length, ...(Array.isArray(item.relatedProducts) ? item.relatedProducts : []));
     renderRelatedProducts();
@@ -614,7 +595,6 @@ Zircon`.split('\n');
     $('dealerMarkupRow').hidden = true;
   }
   function update() {
-    renderMetals();
     for (const id of ['gold', 'silver']) {
       const state = $('rate-' + id);
       if (state && rates[id]) {
@@ -757,7 +737,7 @@ Zircon`.split('\n');
       ...document.querySelectorAll('.stone-quantity, .stone-carats, .stone-price'),
       ...document.querySelectorAll('[id^=legacy-]'),
       $('dealerMarkup'), $('commercialBase'), $('wholesaleMultiplier'), $('retailMultiplier'),
-      $('catalogTotalWeight'), $('catalogGoldWeight'), $('catalogSilverWeight'), $('catalogPrice')
+      $('catalogSilverWeight'), $('catalogGoldWeight'), $('catalogGemstonesWeight'), $('catalogTotalWeight')
     ];
     if (optional.some(input => input.value.trim() !== '' && !valid(number(input)))) {
       $('saveStatus').textContent = 'Amounts and multipliers must be zero or greater.';
@@ -776,7 +756,7 @@ Zircon`.split('\n');
       $('saveStatus').textContent = 'Save at least one entry before exporting.';
       return;
     }
-    const catalogKeys = ['section','categories','sku','metals','totalWeight','goldWeight','silverWeight','gemstone1','gemstone2','gemstone3','currentSitePrice','sizes','status','show','tags','description','descriptionHebrew','descriptionEnabled','internalNote','imageFileName','relatedProducts'];
+    const catalogKeys = ['section','categories','sku','metals','silverWeight','goldWeight','gemstonesWeight','totalWeight','gemstone1','gemstone2','gemstone3','sizes','status','show','tags','description','descriptionHebrew','descriptionEnabled','internalNote','imageFileName','relatedProducts'];
     const keys = ['savedAt', 'productReference', ...catalogKeys, 'totalCost', ...components.map(([id]) => id), 'componentSubtotal', 'dealerMarkup', 'componentDetails', 'commercialBase', 'wholesaleMultiplier', 'wholesalePrice', 'retailMultiplier', 'retailPrice', 'feedback'];
     const quote = input => {
       const raw = String(input ?? '');
@@ -788,8 +768,8 @@ Zircon`.split('\n');
       const sum = components.reduce((total, [id]) => total + (Number(item.components?.[id]) || 0), 0);
       const price = id => item.commercialBase !== '' && item[id] !== '' ? (Number(item.commercialBase) * Number(item[id])).toFixed(2) : '';
       const catalog = item.catalog || {};
-      const catalogValues = [catalog.section, (catalog.categories || []).join('; '), catalog.sku ?? catalog.code, (catalog.metals || []).join('; '), catalog.totalWeight, catalog.goldWeight, catalog.silverWeight,
-        ...(catalog.gemstones || ['', '', '']), catalog.currentSitePrice, catalog.sizes, catalog.status, (catalog.show || [catalog.audience || 'All users', 'Retail']).join('; '), (catalog.tags || []).join('; '), catalog.description, catalog.descriptionHebrew, catalog.descriptionEnabled !== false, catalog.internalNote, catalog.imageFileName, (catalog.relatedProducts || []).join('; ')];
+      const catalogValues = [catalog.section, (catalog.categories || []).join('; '), catalog.sku ?? catalog.code, (catalog.metals || []).join('; '), catalog.silverWeight, catalog.goldWeight, catalog.gemstonesWeight, catalog.totalWeight,
+        ...(catalog.gemstones || ['', '', '']), catalog.sizes, catalog.status, (catalog.show || [catalog.audience || 'All users', 'Retail']).join('; '), (catalog.tags || []).join('; '), catalog.description, catalog.descriptionHebrew, catalog.descriptionEnabled !== false, catalog.internalNote, catalog.imageFileName, (catalog.relatedProducts || []).join('; ')];
       rows.push([
         item.savedAt, item.productReference, ...catalogValues, item.totalCost,
         ...components.map(([id]) => item.components?.[id] ?? ''),
