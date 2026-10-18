@@ -145,6 +145,10 @@ Zircon`.split('\n');
   const SAMPLE_DESCRIPTION = 'A geometric statement necklace with alternating warm and cool metallic bars suspended from a fine chain.';
   const SAMPLE_HEBREW_DESCRIPTION = 'שרשרת בולטת בעיצוב גיאומטרי, עם מוטות מתכתיים בגוונים חמים וקרים לסירוגין התלויים על שרשרת עדינה.';
   let descriptionEnabled = true;
+  let hebrewOverride = false;
+  let translationTimer = null;
+  let translationRequest = null;
+  let translationRevision = 0;
   let selectedImageName = '';
   let photoUrl = null;
   const checked = id => [...$(id).querySelectorAll('input:checked')].map(input => input.value);
@@ -233,6 +237,61 @@ Zircon`.split('\n');
     $('toggleDescription').setAttribute('aria-checked', String(enabled));
     $('descriptionToggleLabel').textContent = enabled ? 'On' : 'Off';
     document.querySelector('.description-section').classList.toggle('is-disabled', !enabled);
+    $('revertHebrew').disabled = !enabled || !hebrewOverride;
+    if (!enabled) cancelTranslation();
+    else if (!hebrewOverride && !value('catalogDescriptionHebrew') && value('catalogDescription')) scheduleHebrewTranslation();
+  }
+  function cancelTranslation() {
+    translationRevision++;
+    clearTimeout(translationTimer);
+    translationTimer = null;
+    if (translationRequest) translationRequest.abort();
+    translationRequest = null;
+  }
+  function scheduleHebrewTranslation(immediate = false) {
+    cancelTranslation();
+    if (!descriptionEnabled || hebrewOverride) return;
+    const english = value('catalogDescription');
+    if (!english) {
+      put('catalogDescriptionHebrew', '');
+      $('hebrewSource').textContent = 'Enter English text to translate.';
+      return;
+    }
+    if (english === SAMPLE_DESCRIPTION) {
+      put('catalogDescriptionHebrew', SAMPLE_HEBREW_DESCRIPTION);
+      $('hebrewSource').textContent = 'Translated from the sample English draft. Editable.';
+      return;
+    }
+    put('catalogDescriptionHebrew', '');
+    if (english.length > 500) {
+      $('hebrewSource').textContent = 'Automatic translation supports up to 500 characters. Shorten the English draft or edit Hebrew directly.';
+      return;
+    }
+    $('hebrewSource').textContent = 'Translating English to Hebrew…';
+    const revision = translationRevision;
+    translationTimer = setTimeout(async () => {
+      const controller = new AbortController();
+      translationRequest = controller;
+      try {
+        const url = new URL('https://api.mymemory.translated.net/get');
+        url.searchParams.set('q', english);
+        url.searchParams.set('langpair', 'en|he');
+        const response = await fetch(url, { signal: controller.signal });
+        if (!response.ok) throw new Error('Translation service unavailable');
+        const data = await response.json();
+        const translated = data.responseData?.translatedText;
+        if (Number(data.responseStatus) !== 200 || typeof translated !== 'string' || !translated.trim()) throw new Error('No translation returned');
+        if (revision !== translationRevision || hebrewOverride || value('catalogDescription') !== english) return;
+        put('catalogDescriptionHebrew', translated);
+        $('hebrewSource').textContent = 'Automatically translated by MyMemory. Edit Hebrew to override.';
+      } catch (error) {
+        if (revision === translationRevision && !hebrewOverride && error.name !== 'AbortError') {
+          $('hebrewSource').textContent = 'Translation unavailable. Enter Hebrew manually or retry by editing English.';
+        }
+      } finally {
+        if (revision === translationRevision) translationRequest = null;
+      }
+    }, immediate ? 0 : 600);
   }
   function showInput(name) { return [...$('catalogShow').querySelectorAll('input')].find(input => input.value === name); }
   function updateShow(changed) {
@@ -259,8 +318,11 @@ Zircon`.split('\n');
     $('descriptionSource').textContent = file ? 'New image selected. Write or edit the English description.' : 'Example draft for the sample image. Edit before use.';
     if (file && value('catalogDescription') === SAMPLE_DESCRIPTION) put('catalogDescription', '');
     if (file && value('catalogDescriptionHebrew') === SAMPLE_HEBREW_DESCRIPTION) {
+      cancelTranslation();
       put('catalogDescriptionHebrew', '');
       $('hebrewSource').textContent = 'Add a Hebrew description for the new image.';
+      hebrewOverride = false;
+      $('revertHebrew').disabled = true;
     }
   }
   function catalogSnapshot() {
@@ -271,12 +333,13 @@ Zircon`.split('\n');
       gemstones: ['catalogStone1', 'catalogStone2', 'catalogStone3', 'catalogStone4'].map(value),
       sizes: value('catalogSizes'),
       status: radio('catalogStatus'), show: checked('catalogShow'), tags: tags.slice(),
-      description: value('catalogDescription'), descriptionHebrew: value('catalogDescriptionHebrew'), descriptionEnabled,
+      description: value('catalogDescription'), descriptionHebrew: value('catalogDescriptionHebrew'), descriptionEnabled, hebrewOverride,
       internalNote: value('catalogInternalNote'),
       imageFileName: selectedImageName, relatedProducts: relatedProducts.slice()
     };
   }
   function restoreCatalog(item = {}) {
+    cancelTranslation();
     const section = $('catalogSection');
     for (const option of section.querySelectorAll('option[data-saved]')) option.remove();
     if (item.section && ![...section.options].some(option => option.value === item.section)) {
@@ -294,9 +357,10 @@ Zircon`.split('\n');
     put('catalogDescription', item.description ?? SAMPLE_DESCRIPTION);
     const sampleDraft = (item.description ?? SAMPLE_DESCRIPTION) === SAMPLE_DESCRIPTION;
     put('catalogDescriptionHebrew', item.descriptionHebrew ?? (sampleDraft ? SAMPLE_HEBREW_DESCRIPTION : ''));
-    $('hebrewSource').textContent = value('catalogDescriptionHebrew') === SAMPLE_HEBREW_DESCRIPTION
-      ? 'Translated from the sample English draft. Editable.'
-      : 'Operator translation. Editable.';
+    hebrewOverride = item.hebrewOverride ?? (!!item.descriptionHebrew && item.descriptionHebrew !== SAMPLE_HEBREW_DESCRIPTION);
+    $('hebrewSource').textContent = hebrewOverride
+      ? 'Operator Hebrew override. Revert to translation to replace it.'
+      : sampleDraft ? 'Translated from the sample English draft. Editable.' : 'Saved Hebrew translation. Editable.';
     setDescriptionEnabled(item.descriptionEnabled !== false);
     put('catalogCode', item.sku ?? item.code ?? 'AVN01575');
     for (const input of $('catalogCategories').querySelectorAll('input')) input.checked = (item.categories || []).includes(input.value);
@@ -764,7 +828,7 @@ Zircon`.split('\n');
       $('saveStatus').textContent = 'Save at least one entry before exporting.';
       return;
     }
-    const catalogKeys = ['section','categories','sku','metals','silverWeight','goldWeight','gemstonesWeight','totalWeight','gemstone1','gemstone2','gemstone3','gemstone4','sizes','status','show','tags','description','descriptionHebrew','descriptionEnabled','internalNote','imageFileName','relatedProducts'];
+    const catalogKeys = ['section','categories','sku','metals','silverWeight','goldWeight','gemstonesWeight','totalWeight','gemstone1','gemstone2','gemstone3','gemstone4','sizes','status','show','tags','description','descriptionHebrew','descriptionEnabled','hebrewOverride','internalNote','imageFileName','relatedProducts'];
     const keys = ['savedAt', 'productReference', ...catalogKeys, 'totalCost', ...components.map(([id]) => id), 'componentSubtotal', 'dealerMarkup', 'componentDetails', 'commercialBase', 'wholesaleMultiplier', 'wholesalePrice', 'retailMultiplier', 'retailPrice', 'feedback'];
     const quote = input => {
       const raw = String(input ?? '');
@@ -777,7 +841,7 @@ Zircon`.split('\n');
       const price = id => item.commercialBase !== '' && item[id] !== '' ? (Number(item.commercialBase) * Number(item[id])).toFixed(2) : '';
       const catalog = item.catalog || {};
       const catalogValues = [catalog.section, (catalog.categories || []).join('; '), catalog.sku ?? catalog.code, (catalog.metals || []).join('; '), catalog.silverWeight, catalog.goldWeight, catalog.gemstonesWeight, catalog.totalWeight,
-        ...Array.from({ length: 4 }, (_, i) => catalog.gemstones?.[i] ?? ''), catalog.sizes, catalog.status, (catalog.show || [catalog.audience || 'All users', 'Retail']).join('; '), (catalog.tags || []).join('; '), catalog.description, catalog.descriptionHebrew, catalog.descriptionEnabled !== false, catalog.internalNote, catalog.imageFileName, (catalog.relatedProducts || []).join('; ')];
+        ...Array.from({ length: 4 }, (_, i) => catalog.gemstones?.[i] ?? ''), catalog.sizes, catalog.status, (catalog.show || [catalog.audience || 'All users', 'Retail']).join('; '), (catalog.tags || []).join('; '), catalog.description, catalog.descriptionHebrew, catalog.descriptionEnabled !== false, catalog.hebrewOverride === true, catalog.internalNote, catalog.imageFileName, (catalog.relatedProducts || []).join('; ')];
       rows.push([
         item.savedAt, item.productReference, ...catalogValues, item.totalCost,
         ...components.map(([id]) => item.components?.[id] ?? ''),
@@ -832,13 +896,22 @@ Zircon`.split('\n');
   $('presetTags').addEventListener('click', event => { const button = event.target.closest('button[data-tag]'); if (button) togglePresetTag(button.dataset.tag); });
   $('toggleDescription').addEventListener('click', () => setDescriptionEnabled(!descriptionEnabled));
   $('catalogDescription').addEventListener('input', () => {
-    if (value('catalogDescription') === SAMPLE_DESCRIPTION) {
-      if (!value('catalogDescriptionHebrew')) put('catalogDescriptionHebrew', SAMPLE_HEBREW_DESCRIPTION);
-      $('hebrewSource').textContent = 'Translated from the sample English draft. Editable.';
-    } else if (value('catalogDescriptionHebrew') === SAMPLE_HEBREW_DESCRIPTION) {
-      put('catalogDescriptionHebrew', '');
-      $('hebrewSource').textContent = 'English draft changed. Enter a Hebrew translation.';
+    if (hebrewOverride) {
+      $('hebrewSource').textContent = 'Operator Hebrew override preserved. Revert to translate the current English.';
+      return;
     }
+    scheduleHebrewTranslation();
+  });
+  $('catalogDescriptionHebrew').addEventListener('input', () => {
+    cancelTranslation();
+    hebrewOverride = true;
+    $('revertHebrew').disabled = false;
+    $('hebrewSource').textContent = 'Operator Hebrew override. Revert to translation to replace it.';
+  });
+  $('revertHebrew').addEventListener('click', () => {
+    hebrewOverride = false;
+    $('revertHebrew').disabled = true;
+    scheduleHebrewTranslation(true);
   });
   $('catalogImage').addEventListener('change', event => {
     const file = event.target.files?.[0];
