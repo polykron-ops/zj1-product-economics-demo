@@ -1129,6 +1129,7 @@ Zircon`.split('\n');
       ...document.querySelectorAll('.stone-quantity, .stone-carats, .stone-price'),
       ...document.querySelectorAll('[id^=legacy-]'), $('dealerMarkup')
     ];
+    optional.push(...document.querySelectorAll('.exception-row input[type=number]'));
     optional.push($('catalogSilverWeight'), $('catalogGoldWeight'), $('catalogGemstonesWeight'), $('catalogTotalWeight'));
     if (optional.some(input => input.value.trim() !== '' && !valid(number(input)))) {
       $('saveStatus').textContent = 'Amounts and multipliers must be zero or greater.';
