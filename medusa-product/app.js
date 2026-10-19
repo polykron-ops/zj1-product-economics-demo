@@ -144,7 +144,7 @@ Zircon`.split('\n');
   const value = id => $(id).value.trim();
   const put = (id, v) => { $(id).value = v ?? ''; };
   const relatedProducts = [];
-  const tags = [];
+  const tags = ['Necklace', 'Mixed metal', 'Geometric', 'Statement'];
   const SAMPLE_DESCRIPTION = 'A geometric statement necklace with alternating warm and cool metallic bars suspended from a fine chain.';
   const SAMPLE_HEBREW_DESCRIPTION = 'שרשרת בולטת בעיצוב גיאומטרי, עם מוטות מתכתיים בגוונים חמים וקרים לסירוגין התלויים על שרשרת עדינה.';
   let descriptionEnabled = true;
@@ -156,6 +156,102 @@ Zircon`.split('\n');
   let photoUrl = null;
   const checked = id => [...$(id).querySelectorAll('input:checked')].map(input => input.value);
   const radio = name => document.querySelector(`input[name="${name}"]:checked`)?.value || '';
+  function buildSketchLayout() {
+    const move = (host, node) => $(host).append(node);
+    move('sketchPhotoHost', $('productPhoto').closest('.image-wrap'));
+    move('sketchDescriptionHost', $('toggleDescription').closest('.description-heading'));
+    move('sketchDescriptionHost', $('catalogDescription').closest('.description-section'));
+    const costRow = $('totalCost').closest('.cost-input-row');
+    costRow.querySelector('label').firstChild.textContent = 'Cost of Goods (USD) ';
+    move('sketchCostInputHost', costRow);
+    move('sketchComponentsHost', $('componentPanel'));
+    move('sketchWholesaleMultiplierHost', $('newWholesaleMultiplier').closest('.input-money'));
+    move('sketchRetailMultiplierHost', $('newRetailMultiplier').closest('.input-money'));
+    $('newWholesaleMultiplier').setAttribute('aria-label', 'Wholesale cost multiplier');
+    $('newWholesaleMultiplier').title = 'Calculates a reference suggestion only. It never changes the displayed price automatically.';
+    $('newRetailMultiplier').setAttribute('aria-label', 'Retail cost multiplier');
+    $('newRetailMultiplier').title = 'Calculates a reference suggestion only. It never changes the displayed price automatically.';
+    move('sketchTierHost', $('tierRows'));
+    move('sketchCustomerHost', $('customerPriceRows'));
+    const attributeControls = [
+      ['sketchCategoriesHost', $('catalogCategories').closest('fieldset')],
+      ['sketchGemstonesHost', $('catalogStone1').closest('.field-row')],
+      ['sketchImageHost', $('catalogImage').closest('.image-edit-row')],
+      ['sketchNoteHost', $('catalogInternalNote').closest('.field-row')],
+      ['sketchRelatedHost', $('relatedProductInput').closest('.field-row')],
+      ['sketchSectionHost', $('catalogSection').closest('.field-row')],
+      ['sketchSizeHost', $('catalogSizes').closest('.field-row')],
+      ['sketchSkuHost', $('catalogCode').closest('.field-row')],
+      ['sketchStatusHost', document.querySelector('input[name="catalogStatus"]').closest('fieldset')],
+      ['sketchTagsHost', $('tagInput').closest('.field-row')],
+      ['sketchVisibleHost', $('catalogShow').closest('fieldset')],
+      ['sketchWeightHost', $('catalogSilverWeight').closest('.weight-row')]
+    ];
+    for (const [host, control] of attributeControls) move(host, control);
+    $('sketchAddTier').addEventListener('click', () => $('addTier').click());
+    $('sketchAddCustomer').addEventListener('click', () => $('addCustomerPrice').click());
+    $('totalCost').addEventListener('input', () => {
+      if (value('totalCost') !== '' && workflow === 'existing') {
+        if (value('proposedWholesale') === '') put('proposedWholesale', value('existingWholesalePrice'));
+        if (value('proposedRetail') === '') put('proposedRetail', value('existingRetailPrice'));
+        setWorkflow('new');
+      } else if (value('totalCost') === '' && workflow === 'new') {
+        if (value('existingWholesalePrice') === '') put('existingWholesalePrice', value('proposedWholesale'));
+        if (value('existingRetailPrice') === '') put('existingRetailPrice', value('proposedRetail'));
+        setWorkflow('existing');
+      }
+    });
+    for (const [visible, existing, proposed] of [
+      ['sketchWholesaleInput', 'existingWholesalePrice', 'proposedWholesale'],
+      ['sketchRetailInput', 'existingRetailPrice', 'proposedRetail']
+    ]) {
+      $(visible).addEventListener('input', () => {
+        put(workflow === 'existing' ? existing : proposed, value(visible));
+        update();
+      });
+    }
+    for (const [button, target, multiplier] of [
+      ['useWholesaleSuggestion', 'proposedWholesale', 'newWholesaleMultiplier'],
+      ['useRetailSuggestion', 'proposedRetail', 'newRetailMultiplier']
+    ]) {
+      $(button).addEventListener('click', () => {
+        const cost = number($('totalCost')), factor = number($(multiplier));
+        if (!valid(cost) || !valid(factor)) return;
+        put(target, (cost * factor).toFixed(2));
+        update();
+      });
+    }
+  }
+  function refreshSketchViews() {
+    const copy = (target, source) => { $(target).textContent = $(source).textContent; };
+    for (const [target, source] of [
+      ['sketchSku', 'productCodePreview'], ['sketchSkuRow', 'productCodePreview'],
+      ['sketchStatus', 'statusBadge'], ['sketchStatusRow', 'statusBadge'],
+      ['sketchSection', 'sectionPreview'], ['sketchSectionRow', 'sectionPreview'],
+      ['sketchCost', 'overviewCost'], ['sketchWholesale', 'overviewWholesale'], ['sketchRetail', 'overviewRetail'],
+      ['sketchCategories', 'categoriesPreview'], ['sketchGemstones', 'gemstonesPreview'],
+      ['sketchNote', 'notePreview'], ['sketchRelated', 'relatedPreview'],
+      ['sketchSize', 'sizesPreview'], ['sketchTags', 'tagsPreview'],
+      ['sketchTagsRow', 'tagsPreview'], ['sketchVisible', 'overviewShow'], ['sketchWeight', 'weightsPreview']
+    ]) copy(target, source);
+    $('sketchImage').textContent = selectedImageName ? selectedImageName : 'Sample photo';
+    const display = [
+      ['sketchWholesaleInput', workflow === 'existing' ? 'existingWholesalePrice' : 'proposedWholesale'],
+      ['sketchRetailInput', workflow === 'existing' ? 'existingRetailPrice' : 'proposedRetail']
+    ];
+    for (const [target, source] of display) if ($(target).value !== value(source)) put(target, value(source));
+    const cost = number($('totalCost'));
+    for (const [textId, buttonId, multiplierId] of [
+      ['sketchWholesaleSuggestion', 'useWholesaleSuggestion', 'newWholesaleMultiplier'],
+      ['sketchRetailSuggestion', 'useRetailSuggestion', 'newRetailMultiplier']
+    ]) {
+      const factor = number($(multiplierId));
+      const ready = valid(cost) && valid(factor);
+      $(textId).textContent = ready ? `Suggested ${dollars(cost * factor)} · reference only` : 'Enter cost for a suggestion';
+      $(buttonId).disabled = !ready;
+    }
+  }
+  buildSketchLayout();
   function setWorkflow(next) {
     workflow = next === 'new' ? 'new' : 'existing';
     $('existingWorkflow').hidden = workflow !== 'existing';
@@ -409,7 +505,7 @@ Zircon`.split('\n');
       ['catalogSection','section'], ['catalogSilverWeight','silverWeight'], ['catalogGoldWeight','goldWeight'],
       ['catalogGemstonesWeight','gemstonesWeight'], ['catalogTotalWeight','totalWeight'],
       ['catalogSizes','sizes'], ['catalogInternalNote','internalNote']
-    ]) put(id, item[key] ?? '');
+    ]) put(id, item[key] ?? (id === 'catalogSection' ? 'Necklaces' : ''));
     put('catalogDescription', item.description ?? SAMPLE_DESCRIPTION);
     const sampleDraft = (item.description ?? SAMPLE_DESCRIPTION) === SAMPLE_DESCRIPTION;
     put('catalogDescriptionHebrew', item.descriptionHebrew ?? (sampleDraft ? SAMPLE_HEBREW_DESCRIPTION : ''));
@@ -424,7 +520,7 @@ Zircon`.split('\n');
     const savedShow = Array.isArray(item.show) ? item.show : [item.audience || 'All users', 'Retail'];
     for (const input of $('catalogShow').querySelectorAll('input')) input.checked = savedShow.includes(input.value);
     updateShow();
-    tags.splice(0, tags.length, ...(Array.isArray(item.tags) ? item.tags : []));
+    tags.splice(0, tags.length, ...(Array.isArray(item.tags) ? item.tags : ['Necklace', 'Mixed metal', 'Geometric', 'Statement']));
     put('tagInput', '');
     renderTags();
     for (let i = 0; i < 4; i++) put('catalogStone' + (i + 1), item.gemstones?.[i] ?? '');
@@ -468,6 +564,7 @@ Zircon`.split('\n');
     $('sizesPreview').textContent = fallback(value('catalogSizes'));
     $('relatedPreview').textContent = relatedProducts.length ? relatedProducts.join(', ') : 'None added';
     $('notePreview').textContent = value('catalogInternalNote') || 'Invisible to public · no note';
+    refreshSketchViews();
   }
 
   function componentInput(id) { return $('component-' + id); }
@@ -924,7 +1021,7 @@ Zircon`.split('\n');
       productReference: value('productReference'),
       feedback: value('feedback'),
       workflow,
-      existing: workflow === 'existing' ? { wholesale: value('existingWholesalePrice'), retail: value('existingRetailPrice'), tiers: exceptionSnapshot('tier'), customerPrices: exceptionSnapshot('customer') } : null,
+      existing: { wholesale: value('existingWholesalePrice'), retail: value('existingRetailPrice'), tiers: exceptionSnapshot('tier'), customerPrices: exceptionSnapshot('customer') },
       newProduct: workflow === 'new' ? {
         totalCost: value('totalCost'), wholesaleMultiplier: value('newWholesaleMultiplier'), retailMultiplier: value('newRetailMultiplier'), costVerified: $('costVerified').checked,
         suggestedWholesale: number($('totalCost')) * number($('newWholesaleMultiplier')),
@@ -987,11 +1084,11 @@ Zircon`.split('\n');
     put('productReference', item.productReference);
     put('feedback', item.feedback);
     restoreCatalog(item.catalog);
+    restoreExceptions(item.existing?.tiers, item.existing?.customerPrices);
     if (item.workflow === 'existing') {
       setWorkflow('existing');
       put('existingWholesalePrice', item.existing?.wholesale);
       put('existingRetailPrice', item.existing?.retail);
-      restoreExceptions(item.existing?.tiers, item.existing?.customerPrices);
     } else {
       setWorkflow('new');
       const data = item.workflow === 'new' ? item.newProduct || {} : item;
