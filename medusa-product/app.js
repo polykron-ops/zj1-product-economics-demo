@@ -3,8 +3,8 @@
 
   const KEY = 'zj1-medusa-product-trial-v1';
   const components = [
-    ['silver', 'Silver', 'Weight in grams × Gold API silver spot price per gram × dealer markup.'],
-    ['gold', 'Gold', 'Weight in grams × Gold API gold spot price per gram × dealer markup.'],
+    ['silver', 'Silver', 'Fine-metal grams × Gold API silver spot price per gram × dealer markup. For alloy weight, enter fineness first.'],
+    ['gold', 'Gold', 'Fine-metal grams × Gold API gold spot price per gram × dealer markup. For alloy weight, enter fineness first.'],
     ['brass', 'Brass', 'Weight in grams × your supplier quote per gram × dealer markup.'],
     ['gemstones', 'Gemstones', 'Each stone type, count and size uses its supplier quote per carat plus dealer markup. Setting labour belongs under Production.'],
     ['production', 'Production', 'Workshop labour, casting or assembly for one product.'],
@@ -424,7 +424,21 @@ Zircon`.split('\n');
     const grams = number($('grams-' + id));
     const spot = id === 'brass' ? number($('spot-brass')) : rates[id]?.usdPerGram ?? null;
     const markup = number($('dealerMarkup'));
-    return valid(grams) && valid(spot) && valid(markup) ? grams * spot * (1 + markup / 100) : legacyAmount(id);
+    const factor = id === 'brass' ? 1 : metalFactor(id);
+    return valid(grams) && valid(spot) && valid(markup) && factor !== null
+      ? grams * factor * spot * (1 + markup / 100) : legacyAmount(id);
+  }
+  function metalFactor(id) {
+    const basis = value('basis-' + id);
+    if (basis === 'fine') return 1;
+    if (basis !== 'alloy') return null;
+    const fineness = number($('fineness-' + id));
+    return valid(fineness) && fineness > 0 && fineness <= 100 ? fineness / 100 : null;
+  }
+  function syncFineness(id) {
+    const alloy = value('basis-' + id) === 'alloy';
+    $('fineness-wrap-' + id).hidden = !alloy;
+    $('fineness-' + id).disabled = !alloy;
   }
   function stones() {
     return [...document.querySelectorAll('.stone-row')].map(row => ({
@@ -451,8 +465,31 @@ Zircon`.split('\n');
   }
   function hasEnteredComponent() {
     return active.some(id => {
-      if (['silver', 'gold', 'brass'].includes(id)) return entered($('legacy-' + id)) || (entered($('grams-' + id)) && (id === 'brass' ? entered($('spot-brass')) : !!rates[id]));
+      if (['silver', 'gold', 'brass'].includes(id)) return entered($('legacy-' + id)) || (entered($('grams-' + id)) && (id === 'brass' ? entered($('spot-brass')) : !!rates[id] && metalFactor(id) !== null));
       if (id === 'gemstones') return entered($('legacy-' + id)) || stones().some(stone => stone.type && [stone.quantity, stone.carats, stone.pricePerCarat].every(v => v !== '' && valid(Number(v))));
+      return entered(componentInput(id));
+    });
+  }
+  function allComponentsComplete() {
+    if (!active.length) return false;
+    const markup = number($('dealerMarkup'));
+    return active.every(id => {
+      if (['silver', 'gold'].includes(id)) {
+        const grams = number($('grams-' + id));
+        if (grams !== null) return valid(grams) && metalFactor(id) !== null && !!rates[id] && valid(markup);
+        return entered($('legacy-' + id));
+      }
+      if (id === 'brass') {
+        const grams = number($('grams-brass'));
+        if (grams !== null) return valid(grams) && entered($('spot-brass')) && valid(markup);
+        return entered($('legacy-brass'));
+      }
+      if (id === 'gemstones') {
+        const rows = stones();
+        if (rows.length) return valid(markup) && rows.every(stone => stone.type &&
+          [stone.quantity, stone.carats, stone.pricePerCarat].every(v => v !== '' && valid(Number(v))));
+        return entered($('legacy-gemstones'));
+      }
       return entered(componentInput(id));
     });
   }
@@ -489,11 +526,13 @@ Zircon`.split('\n');
       if (data.currency !== 'USD' || !Number.isFinite(Number(data.price)) || Number(data.price) <= 0) throw new Error('Invalid quote');
       if (!active.includes(id)) return;
       rates[id] = { usdPerGram: Number(data.price) / TROY_GRAMS, updatedAt: data.updatedAt || new Date().toISOString(), provider: 'Gold API' };
+      $('breakdownComplete').checked = false;
       update();
     } catch {
       if (!active.includes(id)) return;
       rates[id] = null;
       state.textContent = 'Gold API unavailable. Live cost paused; retry quote.';
+      $('breakdownComplete').checked = false;
       update();
     }
   }
@@ -545,9 +584,10 @@ Zircon`.split('\n');
     remove.type = 'button';
     remove.className = 'link-button';
     remove.textContent = 'Remove stone';
-    remove.addEventListener('click', () => { row.remove(); update(); });
+    remove.addEventListener('click', () => { row.remove(); $('breakdownComplete').checked = false; update(); });
     row.append(result, remove);
     host.append(row);
+    $('breakdownComplete').checked = false;
     update();
   }
   function syncPicker() {
@@ -605,6 +645,37 @@ Zircon`.split('\n');
         note.textContent = 'Brass · supplier quote in $US/g. No standard brass spot feed.';
         fields.append(note);
       } else {
+        const basisWrap = document.createElement('div');
+        basisWrap.className = 'component-subfield metal-basis';
+        const basisLabel = document.createElement('label');
+        basisLabel.htmlFor = 'basis-' + id;
+        basisLabel.textContent = 'Weight basis';
+        const basis = document.createElement('select');
+        basis.id = 'basis-' + id;
+        basis.className = 'text-input';
+        for (const [optionValue, optionText] of [['', 'Choose basis'], ['fine', 'Fine-metal equivalent'], ['alloy', 'Alloy weight']]) {
+          const option = document.createElement('option');
+          option.value = optionValue;
+          option.textContent = optionText;
+          basis.append(option);
+        }
+        basis.value = detail.basis || '';
+        basisWrap.append(basisLabel, basis);
+        fields.append(basisWrap);
+        const finenessWrap = document.createElement('div');
+        finenessWrap.id = 'fineness-wrap-' + id;
+        finenessWrap.className = 'component-subfield metal-fineness';
+        finenessWrap.hidden = true;
+        const finenessInput = field(finenessWrap, 'Alloy fineness', 'fineness-' + id, detail.fineness ?? '', '', '%');
+        finenessInput.min = '0.01';
+        finenessInput.max = '100';
+        finenessInput.step = '0.01';
+        finenessInput.placeholder = id === 'silver' ? '92.5' : '75';
+        const finenessHint = document.createElement('small');
+        finenessHint.className = 'rate-note';
+        finenessHint.textContent = id === 'silver' ? 'Sterling 925 = 92.5%.' : '18K gold = 75%.';
+        finenessWrap.append(finenessHint);
+        fields.append(finenessWrap);
         const quote = document.createElement('div');
         quote.className = 'metal-quote';
         const status = document.createElement('span');
@@ -618,6 +689,10 @@ Zircon`.split('\n');
         refresh.addEventListener('click', () => refreshMetal(id));
         quote.append(status, refresh);
         fields.append(quote);
+        const note = document.createElement('small');
+        note.className = 'rate-note metal-estimate-note';
+        note.textContent = 'Fine-metal content estimate only. Other alloy metals, production losses and making costs need separate entries.';
+        fields.append(note);
       }
       const amount = document.createElement('strong');
       amount.id = 'amount-' + id;
@@ -668,12 +743,14 @@ Zircon`.split('\n');
     row.append(remove);
     active.push(id);
     $('componentFields').append(row);
+    if (['silver', 'gold'].includes(id)) syncFineness(id);
+    $('breakdownComplete').checked = false;
     syncEmptyComponents();
     syncPicker();
     $('dealerMarkupRow').hidden = !active.some(x => ['silver', 'gold', 'brass', 'gemstones'].includes(x));
     if (id !== 'brass' && ['silver', 'gold'].includes(id)) {
-      if (detail.rate?.usdPerGram > 0) rates[id] = detail.rate;
-      else refreshMetal(id);
+      rates[id] = null;
+      refreshMetal(id);
     }
     if (id === 'gemstones') for (const stone of detail.stones || []) addStone(stone);
     update();
@@ -688,6 +765,7 @@ Zircon`.split('\n');
     syncPicker();
     $('dealerMarkupRow').hidden = !active.some(x => ['silver', 'gold', 'brass', 'gemstones'].includes(x));
     $('componentsStatus').textContent = '';
+    $('breakdownComplete').checked = false;
     update();
   }
   function clearComponents() {
@@ -697,6 +775,7 @@ Zircon`.split('\n');
     syncEmptyComponents();
     syncPicker();
     $('dealerMarkupRow').hidden = true;
+    $('breakdownComplete').checked = false;
   }
   function update() {
     for (const id of ['gold', 'silver']) {
@@ -716,7 +795,11 @@ Zircon`.split('\n');
       row.querySelector('.stone-amount').textContent = dollars(stoneAmount(stone));
     }
     $('componentSubtotal').textContent = dollars(subtotal());
-    $('adoptSubtotal').disabled = !hasEnteredComponent();
+    const complete = hasEnteredComponent() && allComponentsComplete();
+    $('breakdownComplete').disabled = !complete;
+    if (!complete) $('breakdownComplete').checked = false;
+    $('breakdownReadiness').textContent = complete ? 'All added components have values. Confirm that no applicable costs are missing.' : 'Complete every added component before applying its subtotal.';
+    $('adoptSubtotal').disabled = !complete || !$('breakdownComplete').checked;
     const cost = number($('totalCost'));
     const base = number($('commercialBase'));
     const wholesale = number($('wholesaleMultiplier'));
@@ -760,7 +843,7 @@ Zircon`.split('\n');
       dealerMarkup: value('dealerMarkup'),
       componentDetails: Object.fromEntries(active.map(id => [id,
         id === 'gemstones' ? { stones: stones(), legacyAmount: $('legacy-' + id)?.value ?? '' } :
-        ['silver', 'gold', 'brass'].includes(id) ? { grams: value('grams-' + id), spot: id === 'brass' ? value('spot-brass') : '', rate: rates[id], legacyAmount: $('legacy-' + id)?.value ?? '' } : {}
+        ['silver', 'gold', 'brass'].includes(id) ? { grams: value('grams-' + id), spot: id === 'brass' ? value('spot-brass') : '', basis: id === 'brass' ? '' : value('basis-' + id), fineness: id === 'brass' ? '' : value('fineness-' + id), rate: rates[id], legacyAmount: $('legacy-' + id)?.value ?? '' } : {}
       ])),
       catalog: catalogSnapshot()
     };
@@ -826,9 +909,15 @@ Zircon`.split('\n');
     openEditor('catalogPanel');
   }
   function save() {
+    if (!value('productReference')) {
+      $('saveStatus').textContent = 'Enter a product reference for this trial entry.';
+      $('productReference').focus();
+      return;
+    }
     const cost = number($('totalCost'));
     if (!valid(cost)) {
       $('saveStatus').textContent = 'Enter a valid Total Product Cost before saving.';
+      closeDrawer();
       openEditor('costPanel', 'totalCost');
       return;
     }
@@ -845,6 +934,15 @@ Zircon`.split('\n');
       $('saveStatus').textContent = 'Amounts and multipliers must be zero or greater.';
       return;
     }
+    for (const id of ['silver', 'gold']) {
+      if (active.includes(id) && value('grams-' + id) !== '' && metalFactor(id) === null) {
+        $('saveStatus').textContent = 'Choose the weight basis and, for alloy weight, a valid fineness for ' + id + '.';
+        $('componentsStatus').textContent = $('saveStatus').textContent;
+        closeDrawer();
+        openEditor('componentPanel', value('basis-' + id) === 'alloy' ? 'fineness-' + id : 'basis-' + id);
+        return;
+      }
+    }
     const list = entries();
     list.push(snapshot());
     if (persist(list)) {
@@ -859,7 +957,7 @@ Zircon`.split('\n');
       return;
     }
     const catalogKeys = ['section','categories','sku','metals','silverWeight','goldWeight','gemstonesWeight','totalWeight','gemstone1','gemstone2','gemstone3','gemstone4','sizes','status','show','tags','description','descriptionHebrew','descriptionEnabled','hebrewOverride','internalNote','imageFileName','relatedProducts'];
-    const keys = ['savedAt', 'productReference', ...catalogKeys, 'totalCost', ...components.map(([id]) => id), 'componentSubtotal', 'dealerMarkup', 'componentDetails', 'commercialBase', 'wholesaleMultiplier', 'wholesalePrice', 'retailMultiplier', 'retailPrice', 'feedback'];
+    const keys = ['id', 'savedAt', 'productReference', ...catalogKeys, 'totalCost', ...components.map(([id]) => id), 'componentSubtotal', 'dealerMarkup', 'componentDetails', 'commercialBase', 'wholesaleMultiplier', 'wholesalePrice', 'retailMultiplier', 'retailPrice', 'feedback'];
     const quote = input => {
       const raw = String(input ?? '');
       const safe = /^\s*[=+\-@]/.test(raw) ? "'" + raw : raw;
@@ -873,7 +971,7 @@ Zircon`.split('\n');
       const catalogValues = [catalog.section, (catalog.categories || []).join('; '), catalog.sku ?? catalog.code, (catalog.metals || []).join('; '), catalog.silverWeight, catalog.goldWeight, catalog.gemstonesWeight, catalog.totalWeight,
         ...Array.from({ length: 4 }, (_, i) => catalog.gemstones?.[i] ?? ''), catalog.sizes, catalog.status, (catalog.show || [catalog.audience || 'All users', 'Retail']).join('; '), (catalog.tags || []).join('; '), catalog.description, catalog.descriptionHebrew, catalog.descriptionEnabled !== false, catalog.hebrewOverride === true, catalog.internalNote, catalog.imageFileName, (catalog.relatedProducts || []).join('; ')];
       rows.push([
-        item.savedAt, item.productReference, ...catalogValues, item.totalCost,
+        item.id, item.savedAt, item.productReference, ...catalogValues, item.totalCost,
         ...components.map(([id]) => item.components?.[id] ?? ''),
         sum.toFixed(2), item.dealerMarkup ?? '', JSON.stringify(item.componentDetails || {}), item.commercialBase, item.wholesaleMultiplier,
         price('wholesaleMultiplier'), item.retailMultiplier,
@@ -938,6 +1036,17 @@ Zircon`.split('\n');
   $('componentSelect').addEventListener('change', event => {
     if (event.target.value) addComponent(event.target.value);
   });
+  $('componentPanel').querySelector('.editor-content').addEventListener('input', event => {
+    if (event.target !== $('breakdownComplete')) $('breakdownComplete').checked = false;
+    update();
+  });
+  $('componentPanel').querySelector('.editor-content').addEventListener('change', event => {
+    if (event.target.id === 'basis-silver') syncFineness('silver');
+    if (event.target.id === 'basis-gold') syncFineness('gold');
+    if (event.target !== $('breakdownComplete')) $('breakdownComplete').checked = false;
+    update();
+  });
+  $('breakdownComplete').addEventListener('change', update);
   $('openComponents').addEventListener('click', () => {
     openEditor('componentPanel');
   });
@@ -984,9 +1093,10 @@ Zircon`.split('\n');
   });
   document.addEventListener('change', refreshMedusaViews);
   $('adoptSubtotal').addEventListener('click', () => {
-    if (!hasEnteredComponent()) return;
+    if (!hasEnteredComponent() || !allComponentsComplete() || !$('breakdownComplete').checked) return;
     $('totalCost').value = subtotal().toFixed(2);
-    $('componentsStatus').textContent = 'Subtotal applied. Total Product Cost remains editable.';
+    $('componentsStatus').textContent = 'Confirmed subtotal applied. Total Product Cost remains editable.';
+    $('breakdownComplete').checked = false;
     update();
   });
   $('copyCost').addEventListener('click', () => {
