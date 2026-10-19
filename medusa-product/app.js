@@ -437,8 +437,6 @@ Zircon`.split('\n');
       $('catalogImageStatus').textContent = `Re-select image: ${selectedImageName}`;
       $('descriptionSource').textContent = 'Description saved with this entry. Re-select the image to preview it.';
     }
-    $('productCodePreview').textContent = value('catalogCode') || 'AVN01575';
-    $('pictureSku').textContent = value('catalogCode') || 'AVN01575';
     refreshMedusaViews();
   }
 
@@ -451,9 +449,13 @@ Zircon`.split('\n');
     const weights = [['Silver', 'catalogSilverWeight'], ['Gold', 'catalogGoldWeight'], ['Gemstones', 'catalogGemstonesWeight'], ['Total', 'catalogTotalWeight']]
       .filter(([, id]) => value(id) !== '').map(([label, id]) => `${label} ${value(id)} g`);
     $('productCodePreview').textContent = sku;
-    $('pictureSku').textContent = sku;
-    $('skuPreview').textContent = sku;
-    $('sectionPreview').textContent = fallback(section);
+    $('sectionPreview').textContent = section || 'Not set';
+    $('overviewShow').textContent = checked('catalogShow').join(' · ') || 'Not set';
+    $('overviewSize').textContent = value('catalogSizes') || 'Not set';
+    $('overviewGemstones').textContent = stones.join(', ') || 'None';
+    $('overviewWeight').textContent = weights.join(' · ') || 'Not entered';
+    $('overviewCategories').textContent = checked('catalogCategories').join(', ') || 'None';
+    $('overviewTags').textContent = tags.join(', ') || 'None';
     $('descriptionPreview').textContent = descriptionEnabled ? fallback(value('catalogDescription')) : 'Description off';
     $('statusBadge').textContent = status;
     $('statusBadge').classList.toggle('inactive', status === 'Inactive');
@@ -881,6 +883,15 @@ Zircon`.split('\n');
     $('costQuality').textContent = !valid(cost) ? 'Enter a total cost to calculate suggestions.' : !($('costVerified').checked) ? 'Cost not yet verified. Suggestions are provisional.' : active.length && !complete ? 'Cost checked, but the optional component breakdown is incomplete.' : active.length && Math.abs(subtotal() - cost) > .005 ? 'Cost checked, but it differs from the optional component subtotal. Review before approval.' : 'Total cost checked for this trial.';
     const proposedW = number($('proposedWholesale')), proposedR = number($('proposedRetail'));
     $('proposalStatus').textContent = proposedW === null && proposedR === null ? 'Enter display prices or copy the suggestions once.' : suggestedWholesale !== null && suggestedRetail !== null && (proposedW !== null && Math.abs(proposedW - suggestedWholesale) > .005 || proposedR !== null && Math.abs(proposedR - suggestedRetail) > .005) ? 'Display prices differ from current suggestions. Your entered prices are preserved.' : 'Display prices stay as entered when costs or multipliers change.';
+    const displayWholesale = workflow === 'existing' ? number($('existingWholesalePrice')) : proposedW;
+    const displayRetail = workflow === 'existing' ? number($('existingRetailPrice')) : proposedR;
+    $('overviewMode').textContent = workflow === 'existing' ? 'Existing product · approved prices' : 'New product · proposed prices';
+    $('overviewCost').textContent = workflow === 'existing' ? 'Not recorded' : valid(cost) ? dollars(cost) : 'Not entered';
+    $('overviewWholesale').textContent = valid(displayWholesale) ? dollars(displayWholesale) : workflow === 'existing' ? 'Not entered' : 'Not set';
+    $('overviewRetail').textContent = valid(displayRetail) ? dollars(displayRetail) : workflow === 'existing' ? 'Not entered' : 'Not set';
+    const tierCount = $('tierRows').querySelectorAll('.exception-row').length;
+    const customerCount = $('customerPriceRows').querySelectorAll('.exception-row').length;
+    $('overviewExceptions').textContent = workflow === 'new' ? 'Not applicable' : [tierCount && `${tierCount} tier${tierCount === 1 ? '' : 's'}`, customerCount && `${customerCount} customer${customerCount === 1 ? '' : 's'}`].filter(Boolean).join(' · ') || 'None';
     refreshMedusaViews();
   }
   function entries() {
