@@ -156,15 +156,37 @@ Zircon`.split('\n');
   let photoUrl = null;
   const checked = id => [...$(id).querySelectorAll('input:checked')].map(input => input.value);
   const radio = name => document.querySelector(`input[name="${name}"]:checked`)?.value || '';
+  const costBuckets = [['silver', 'sketchSilverCost'], ['gold', 'sketchGoldCost'], ['gems', 'sketchGemsCost'], ['labor', 'sketchLaborCost'], ['other', 'sketchOtherCost']];
+  function syncCostBuckets() {
+    const entered = costBuckets.map(([, id]) => $(id)).filter(input => input.value.trim() !== '');
+    const invalid = entered.some(input => !valid(number(input)));
+    const total = entered.reduce((sum, input) => sum + (valid(number(input)) ? number(input) : 0), 0);
+    put('totalCost', entered.length && !invalid ? total.toFixed(2) : '');
+    $('sketchTotalCostValue').textContent = invalid ? '—' : entered.length ? total.toFixed(2) : '0.00';
+    $('costVerified').checked = false;
+    if (entered.length && workflow === 'existing') {
+      if (value('proposedWholesale') === '') put('proposedWholesale', value('existingWholesalePrice'));
+      if (value('proposedRetail') === '') put('proposedRetail', value('existingRetailPrice'));
+      setWorkflow('new');
+    } else if (!entered.length && workflow === 'new') {
+      if (value('existingWholesalePrice') === '') put('existingWholesalePrice', value('proposedWholesale'));
+      if (value('existingRetailPrice') === '') put('existingRetailPrice', value('proposedRetail'));
+      setWorkflow('existing');
+    } else update();
+  }
+  function restoreCostBuckets(data = {}) {
+    const saved = data.costBuckets || (data.totalCost !== '' && data.totalCost != null ? { other: data.totalCost } : {});
+    for (const [key, id] of costBuckets) put(id, saved[key] ?? '');
+    $('sketchOtherCostField').hidden = value('sketchOtherCost') === '';
+    syncCostBuckets();
+  }
   function buildSketchLayout() {
     const move = (host, node) => $(host).append(node);
     move('sketchPhotoHost', $('productPhoto').closest('.image-wrap'));
     move('sketchDescriptionHost', $('toggleDescription').closest('.description-heading'));
     move('sketchDescriptionHost', $('catalogDescription').closest('.description-section'));
-    const costRow = $('totalCost').closest('.cost-input-row');
-    costRow.querySelector('label').firstChild.textContent = 'Cost of Goods (USD) ';
-    move('sketchCostInputHost', costRow);
     move('sketchComponentsHost', $('componentPanel'));
+    $('adoptSubtotal').textContent = 'Use subtotal in cost fields';
     move('sketchWholesaleMultiplierHost', $('newWholesaleMultiplier').closest('.input-money'));
     move('sketchRetailMultiplierHost', $('newRetailMultiplier').closest('.input-money'));
     $('newWholesaleMultiplier').setAttribute('aria-label', 'Wholesale cost multiplier');
@@ -190,17 +212,7 @@ Zircon`.split('\n');
     for (const [host, control] of attributeControls) move(host, control);
     $('sketchAddTier').addEventListener('click', () => $('addTier').click());
     $('sketchAddCustomer').addEventListener('click', () => $('addCustomerPrice').click());
-    $('totalCost').addEventListener('input', () => {
-      if (value('totalCost') !== '' && workflow === 'existing') {
-        if (value('proposedWholesale') === '') put('proposedWholesale', value('existingWholesalePrice'));
-        if (value('proposedRetail') === '') put('proposedRetail', value('existingRetailPrice'));
-        setWorkflow('new');
-      } else if (value('totalCost') === '' && workflow === 'new') {
-        if (value('existingWholesalePrice') === '') put('existingWholesalePrice', value('proposedWholesale'));
-        if (value('existingRetailPrice') === '') put('existingRetailPrice', value('proposedRetail'));
-        setWorkflow('existing');
-      }
-    });
+    for (const [, id] of costBuckets) $(id).addEventListener('input', syncCostBuckets);
     for (const [visible, existing, proposed] of [
       ['sketchWholesaleInput', 'existingWholesalePrice', 'proposedWholesale'],
       ['sketchRetailInput', 'existingRetailPrice', 'proposedRetail']
@@ -463,7 +475,7 @@ Zircon`.split('\n');
     if (photoUrl) URL.revokeObjectURL(photoUrl);
     photoUrl = file ? URL.createObjectURL(file) : null;
     $('productPhoto').src = photoUrl || './sample-product.png';
-    $('productPhoto').alt = file ? 'Selected trial product image' : 'Sample mixed-metal necklace supplied for the prototype';
+    $('productPhoto').alt = file ? 'Selected trial product image' : 'Mixed Metal Bar Necklace supplied for the prototype';
     selectedImageName = file?.name || '';
     $('catalogImageStatus').textContent = file ? file.name : '';
     $('descriptionSource').textContent = file ? 'New image selected. Write or edit the English description.' : 'Example draft for the sample image. Edit before use.';
@@ -1023,7 +1035,7 @@ Zircon`.split('\n');
       workflow,
       existing: { wholesale: value('existingWholesalePrice'), retail: value('existingRetailPrice'), tiers: exceptionSnapshot('tier'), customerPrices: exceptionSnapshot('customer') },
       newProduct: workflow === 'new' ? {
-        totalCost: value('totalCost'), wholesaleMultiplier: value('newWholesaleMultiplier'), retailMultiplier: value('newRetailMultiplier'), costVerified: $('costVerified').checked,
+        totalCost: value('totalCost'), costBuckets: Object.fromEntries(costBuckets.map(([key, id]) => [key, value(id)])), wholesaleMultiplier: value('newWholesaleMultiplier'), retailMultiplier: value('newRetailMultiplier'), costVerified: $('costVerified').checked,
         suggestedWholesale: number($('totalCost')) * number($('newWholesaleMultiplier')),
         suggestedRetail: number($('totalCost')) * number($('newRetailMultiplier')),
         proposedWholesale: value('proposedWholesale'), proposedRetail: value('proposedRetail'),
@@ -1092,7 +1104,6 @@ Zircon`.split('\n');
     } else {
       setWorkflow('new');
       const data = item.workflow === 'new' ? item.newProduct || {} : item;
-      put('totalCost', data.totalCost);
       put('newWholesaleMultiplier', item.workflow === 'new' ? data.wholesaleMultiplier : '2.00');
       put('newRetailMultiplier', item.workflow === 'new' ? data.retailMultiplier : '4.00');
       put('proposedWholesale', data.proposedWholesale);
@@ -1100,8 +1111,9 @@ Zircon`.split('\n');
       put('dealerMarkup', data.dealerMarkup ?? '5');
       const selected = Array.isArray(data.componentTypes) ? data.componentTypes : components.map(([id]) => id).filter(id => (data.components?.[id] ?? '') !== '');
       for (const id of selected) addComponent(id, data.components?.[id] ?? '', data.componentDetails?.[id] || {});
-      $('costVerified').checked = item.workflow === 'new' && data.costVerified === true;
       if (selected.length) $('componentPanel').open = true;
+      restoreCostBuckets(data);
+      $('costVerified').checked = item.workflow === 'new' && data.costVerified === true;
     }
     $('saveStatus').textContent = item.workflow ? 'Saved entry opened. Saving again creates another copy.' : 'Earlier entry opened. Previous commercial-base pricing was not imported as a cost-based suggestion.';
     closeDrawer();
@@ -1115,14 +1127,16 @@ Zircon`.split('\n');
       return;
     }
     if (workflow === 'new' && !valid(number($('totalCost')))) {
-      $('saveStatus').textContent = 'Enter a valid Total Product Cost before saving.';
-      closeDrawer(); $('totalCost').focus(); return;
+      $('saveStatus').textContent = 'Enter valid Cost of Goods amounts before saving.';
+      closeDrawer();
+      (costBuckets.map(([, id]) => $(id)).find(input => input.value.trim() !== '' && !valid(number(input))) || $('sketchSilverCost')).focus();
+      return;
     }
     const optional = workflow === 'existing' ? [
       $('existingWholesalePrice'), $('existingRetailPrice'),
       ...document.querySelectorAll('.exception-row input[type=number]')
     ] : [
-      $('totalCost'), $('newWholesaleMultiplier'), $('newRetailMultiplier'), $('proposedWholesale'), $('proposedRetail'),
+      $('totalCost'), ...costBuckets.map(([, id]) => $(id)), $('newWholesaleMultiplier'), $('newRetailMultiplier'), $('proposedWholesale'), $('proposedRetail'),
       ...active.filter(id => !['silver', 'gold', 'brass', 'gemstones'].includes(id)).flatMap(id => [$('qty-' + id), componentInput(id)]),
       ...active.filter(id => ['silver', 'gold', 'brass'].includes(id)).map(id => $('grams-' + id)),
       ...(active.includes('brass') ? [$('spot-brass')] : []),
@@ -1162,7 +1176,7 @@ Zircon`.split('\n');
       return;
     }
     const catalogKeys = ['section','categories','sku','metals','silverWeight','goldWeight','gemstonesWeight','totalWeight','gemstone1','gemstone2','gemstone3','gemstone4','sizes','status','show','tags','description','descriptionHebrew','descriptionEnabled','hebrewOverride','internalNote','imageFileName','relatedProducts'];
-    const keys = ['id', 'savedAt', 'productReference', 'workflow', ...catalogKeys, 'approvedWholesale', 'approvedRetail', 'wholesaleTiers', 'customerPrices', 'totalProductCost', 'costVerified', ...components.map(([id]) => id), 'componentSubtotal', 'dealerMarkup', 'componentDetails', 'wholesaleCostMultiplier', 'suggestedWholesale', 'retailCostMultiplier', 'suggestedRetail', 'proposedWholesale', 'proposedRetail', 'feedback', 'earlierEntryData'];
+    const keys = ['id', 'savedAt', 'productReference', 'workflow', ...catalogKeys, 'approvedWholesale', 'approvedRetail', 'wholesaleTiers', 'customerPrices', 'totalProductCost', ...costBuckets.map(([key]) => key + 'Cost'), 'costVerified', ...components.map(([id]) => id), 'componentSubtotal', 'dealerMarkup', 'componentDetails', 'wholesaleCostMultiplier', 'suggestedWholesale', 'retailCostMultiplier', 'suggestedRetail', 'proposedWholesale', 'proposedRetail', 'feedback', 'earlierEntryData'];
     const quote = input => {
       const raw = String(input ?? '');
       const safe = /^\s*[=+\-@]/.test(raw) ? "'" + raw : raw;
@@ -1179,7 +1193,7 @@ Zircon`.split('\n');
       rows.push([
         item.id, item.savedAt, item.productReference, item.workflow || 'earlier entry', ...catalogValues,
         approved.wholesale ?? '', approved.retail ?? '', JSON.stringify(approved.tiers || []), JSON.stringify(approved.customerPrices || []),
-        data.totalCost ?? '', data.costVerified ?? '',
+        data.totalCost ?? '', ...costBuckets.map(([key]) => data.costBuckets?.[key] ?? ''), data.costVerified ?? '',
         ...components.map(([id]) => data.components?.[id] ?? ''),
         data.componentTypes?.length ? sum.toFixed(2) : '', data.dealerMarkup ?? '', JSON.stringify(data.componentDetails || {}),
         data.wholesaleMultiplier ?? '', data.suggestedWholesale ?? '', data.retailMultiplier ?? '', data.suggestedRetail ?? '',
@@ -1198,6 +1212,9 @@ Zircon`.split('\n');
   }
   function resetForm() {
     for (const id of ['totalCost', 'existingWholesalePrice', 'existingRetailPrice', 'proposedWholesale', 'proposedRetail', 'productReference', 'feedback']) put(id, '');
+    for (const [, id] of costBuckets) put(id, '');
+    $('sketchOtherCostField').hidden = true;
+    $('sketchTotalCostValue').textContent = '0.00';
     put('newWholesaleMultiplier', '2.00'); put('newRetailMultiplier', '4.00');
     put('dealerMarkup', '5');
     $('costVerified').checked = false;
@@ -1318,11 +1335,24 @@ Zircon`.split('\n');
   document.addEventListener('change', refreshMedusaViews);
   $('adoptSubtotal').addEventListener('click', () => {
     if (!hasEnteredComponent() || !allComponentsComplete() || !$('breakdownComplete').checked) return;
-    $('totalCost').value = subtotal().toFixed(2);
-    $('costVerified').checked = false;
-    $('componentsStatus').textContent = 'Confirmed subtotal applied. Total Product Cost remains editable.';
+    const classified = {
+      silver: active.includes('silver') ? componentAmount('silver') : null,
+      gold: active.includes('gold') ? componentAmount('gold') : null,
+      gems: active.includes('gemstones') ? componentAmount('gemstones') : null,
+      labor: active.some(id => id === 'production' || id === 'setting') ? ['production', 'setting'].filter(id => active.includes(id)).reduce((sum, id) => sum + componentAmount(id), 0) : null,
+      other: active.some(id => ['brass', 'findings', 'plating', 'overhead', 'other'].includes(id)) ? ['brass', 'findings', 'plating', 'overhead', 'other'].filter(id => active.includes(id)).reduce((sum, id) => sum + componentAmount(id), 0) : null
+    };
+    const cents = Object.fromEntries(Object.entries(classified).filter(([, amount]) => amount !== null).map(([key, amount]) => [key, Math.round(amount * 100)]));
+    const difference = Math.round(subtotal() * 100) - Object.values(cents).reduce((sum, amount) => sum + amount, 0);
+    if (difference) {
+      const largest = Object.keys(cents).sort((a, b) => cents[b] - cents[a])[0];
+      cents[largest] += difference;
+    }
+    for (const [key, id] of costBuckets) put(id, classified[key] === null ? '' : (cents[key] / 100).toFixed(2));
+    $('sketchOtherCostField').hidden = classified.other === null;
+    $('componentsStatus').textContent = 'Component subtotal applied to the cost fields. Displayed prices were preserved.';
     $('breakdownComplete').checked = false;
-    update();
+    syncCostBuckets();
   });
   $('openTrial').addEventListener('click', openDrawer);
   $('closeTrial').addEventListener('click', closeDrawer);

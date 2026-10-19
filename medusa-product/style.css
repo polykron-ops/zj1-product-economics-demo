@@ -481,3 +481,28 @@ body.editor-open { overflow: hidden; }
 @media (max-width: 800px) { .sketch-columns { grid-template-columns: 1fr; } }
 @media (max-width: 580px) { .sketch-description .description-section { grid-template-columns: 1fr; } .sketch-metrics { grid-template-columns: repeat(3,minmax(0,1fr)); } .sketch-metrics strong { font-size: 13px; } .sketch-economics { padding: 14px; } }
 @media (max-width: 430px) { .sketch-metrics { grid-template-columns: 1fr; } .sketch-metrics > div { min-height: 0; } .sketch-prices .exception-row { grid-template-columns: repeat(2,minmax(0,1fr)); } .sketch-attribute-list .weight-row { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+
+/* Clear three-part hierarchy and compact cost/price rows. */
+.sketch-section-title { color: #25272d; font-size: 23px; font-weight: 700; line-height: 1.2; letter-spacing: -.035em; }
+.sketch-overview-title { margin: 0 0 12px; }
+.sketch-cost-heading { margin: 0 0 10px; font-size: 13px; font-weight: 700; }
+.sketch-cost-heading small { color: #777982; font-size: 11px; font-weight: 600; }
+.sketch-cost-fields { display: grid; grid-template-columns: repeat(auto-fit,minmax(78px,1fr)); gap: 7px; align-items: start; }
+.sketch-cost-field { min-width: 0; }
+.sketch-cost-field .input-money { min-width: 0; }
+.sketch-cost-field .input-money > span { padding: 0 4px 0 7px; font-size: 10px; }
+.sketch-cost-field .input-money input { min-width: 0; padding: 0 4px 0 0; font-size: 11px; }
+.sketch-cost-field > label, .sketch-cost-field > span { display: block; margin-top: 5px; color: #696b74; font-size: 11px; font-weight: 650; text-align: center; }
+.sketch-cost-total .input-money { background: #f5f5f7; border-color: #dbdce1; }
+.sketch-cost-total output { display: flex; align-items: center; min-width: 0; min-height: 36px; overflow: hidden; font-size: 12px; font-weight: 700; }
+.sketch-pricing-title { margin: 16px 0 12px; padding-top: 17px; border-top: 1px solid #ededf0; }
+.sketch-pricing-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.sketch-pricing-grid .sketch-price-block { min-width: 0; margin: 0; padding: 12px; border: 1px solid #e9e9ed; border-radius: 5px; background: #fafafb; }
+.sketch-pricing-grid .sketch-price-block > strong { min-height: 31px; font-size: 12px; }
+.sketch-pricing-grid .sketch-price-pair { gap: 6px; }
+.sketch-pricing-grid .sketch-price-pair .input-money > span { padding: 0 5px; font-size: 11px; }
+.sketch-pricing-grid .sketch-price-pair input { font-size: 12px; }
+.sketch-pricing-grid .sketch-suggestion { min-height: 28px; line-height: 1.3; }
+.sketch-attributes-title { margin: 0; padding: 15px 14px 5px; }
+.sketch-attributes .sketch-list-head { padding-top: 8px; }
+@media (max-width: 580px) { .sketch-section-title { font-size: 21px; } .sketch-pricing-grid { grid-template-columns: 1fr; } .sketch-pricing-grid .sketch-price-block > strong { min-height: 0; } }
