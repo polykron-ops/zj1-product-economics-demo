@@ -331,8 +331,8 @@ body.editor-open { overflow: hidden; }
 @media (max-width: 420px) { .trial-rail > span:first-child { max-width: 42%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; } .data-row { grid-template-columns: 78px minmax(0,1fr); } .media-grid .image-wrap { width: 100px; height: 100px; flex-basis: 100px; } }
 
 /* Cost breakdown is opened from Cost of Goods, with no second overview card. */
-#componentPanel { position: absolute; width: 0; height: 0; border: 0; box-shadow: none; }
-#componentPanel > summary { display: none; }
+#componentPanel { position: static; width: auto; height: auto; border: 1px solid #e8e8eb; border-radius: 5px; box-shadow: none; margin-top: 18px; }
+#componentPanel > summary { display: block; padding: 13px 15px; color: #52556a; font-size: 12px; font-weight: 650; }
 .metal-basis select { min-height: 33px; }
 .metal-fineness .component-subfield { margin: 0; }
 .metal-estimate-note { grid-column: 1 / -1; margin: 2px 0 4px; }
@@ -341,3 +341,38 @@ body.editor-open { overflow: hidden; }
 .handoff-note { border: 1px solid #e4e4e8; border-radius: 5px; background: #f8f8f9; padding: 11px 12px; margin: 0 0 20px; }
 .handoff-note strong { font-size: 11px; }
 .handoff-note p { color: #74757d; font-size: 11px; line-height: 1.5; margin: 5px 0 0; }
+.workflow-switch { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; padding: 12px 16px; margin-bottom: 18px; background: #fff; border: 1px solid #e6e6e9; border-radius: 7px; font-size: 12px; }
+.workflow-switch > span { color: #777983; font-weight: 650; }
+.workflow-switch label { display: inline-flex; gap: 7px; align-items: center; cursor: pointer; font-weight: 650; }
+.workflow-switch input { accent-color: #5b577a; }
+.workflow-stack { display: flex; flex-direction: column; gap: 16px; }
+.workflow-stack[hidden] { display: none; }
+.workflow-panel { padding: 20px; }
+.panel-heading { display: flex; align-items: start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.panel-heading small { display: block; color: #85858e; font-size: 11px; margin-bottom: 4px; }
+.panel-heading h2 { font-size: 16px; margin: 0; }
+.workflow-panel .helper { color: #7b7d85; font-size: 11px; line-height: 1.5; }
+.selling-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; margin: 18px 0; }
+.selling-grid .field-row { min-width: 0; margin: 0; }
+.selling-grid .input-money { margin-top: 7px; }
+.price-exceptions { border-top: 1px solid #eeeef1; padding-top: 5px; }
+.price-exceptions > summary { padding: 11px 0; color: #5a5774; font-size: 12px; font-weight: 650; }
+.exceptions-content { padding: 0 0 7px; }
+.exception-group .subsection-heading { margin: 16px 0 9px; }
+.exception-row { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)) auto; gap: 8px; align-items: end; margin-bottom: 8px; }
+.exception-field { min-width: 0; color: #62636b; font-size: 10px; }
+.exception-field input { margin-top: 4px; }
+.recorded-cost > strong { font-size: 17px; }
+.cost-input-row { max-width: 380px; }
+.cost-breakdown .component-content { padding: 14px 16px 18px; border-top: 1px solid #eeeef1; }
+.cost-breakdown .component-fields { margin: 14px 0; }
+.cost-breakdown .component-field { grid-template-columns: minmax(0,1fr) 27px; }
+.cost-breakdown .generic-fields { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; grid-column: 1 / -1; }
+.cost-breakdown .metal-fields { grid-column: 1 / -1; }
+.cost-breakdown .metal-amount { grid-column: 1 / -1; }
+.cost-breakdown .component-field .remove-component { grid-column: 2; grid-row: 1; }
+.trial-badge { border-radius: 4px; background: #f2f0f8; color: #615d7a; padding: 5px 7px; font-size: 10px; white-space: nowrap; }
+.cost-verify { display: flex; gap: 8px; font-size: 12px; margin-top: 18px; }
+.quality-warning { background: #fff9e8; color: #886518; padding: 9px 11px; font-size: 11px; border-radius: 4px; }
+.proposed-grid { margin-top: 17px; }
+@media (max-width: 550px) { .selling-grid { grid-template-columns: 1fr; gap: 10px; } .exception-row { grid-template-columns: repeat(2,minmax(0,1fr)); } .exception-row .link-button { justify-self: start; } .cost-breakdown .generic-fields { grid-template-columns: repeat(2,minmax(0,1fr)); } .trial-badge { white-space: normal; } }

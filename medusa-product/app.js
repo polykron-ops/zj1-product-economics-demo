@@ -3,14 +3,16 @@
 
   const KEY = 'zj1-medusa-product-trial-v1';
   const components = [
-    ['silver', 'Silver', 'Fine-metal grams × Gold API silver spot price per gram × dealer markup. For alloy weight, enter fineness first.'],
-    ['gold', 'Gold', 'Fine-metal grams × Gold API gold spot price per gram × dealer markup. For alloy weight, enter fineness first.'],
+    ['silver', 'Silver (925)', 'Silver 925 alloy weight × 92.5% fine-metal content × Gold API pure-silver spot rate × dealer markup. Adjust fineness only when needed.'],
+    ['gold', 'Gold', 'Choose 14K, 18K or custom fineness. Alloy weight × fine-gold content × Gold API pure-gold spot rate × dealer markup.'],
     ['brass', 'Brass', 'Weight in grams × your supplier quote per gram × dealer markup.'],
     ['gemstones', 'Gemstones', 'Each stone type, count and size uses its supplier quote per carat plus dealer markup. Setting labour belongs under Production.'],
-    ['production', 'Production', 'Workshop labour, casting or assembly for one product.'],
-    ['plating', 'Plating', 'Plating or surface-treatment cost for one product.'],
-    ['packaging', 'Packaging', 'Packaging cost allocated to one product.'],
-    ['other', 'Other', 'Any other direct product cost.']
+    ['findings', 'Findings / clasps', 'Supplier or stock rate per finding. Add only the quantity used.'],
+    ['production', 'Production labour', 'Workshop hours or units × labour rate. Keep metal and setting costs separate.'],
+    ['plating', 'Gold plating', 'Use an all-in plating service rate; do not add its gold materials again under Gold.'],
+    ['setting', 'Stone setting', 'Setting labour or per-stone service rate; gemstones themselves are separate.'],
+    ['overhead', 'Factory overhead', 'Allocated manufacturing overhead per product or batch unit.'],
+    ['other', 'Other manufacturing costs', 'Other direct manufacturing costs not already counted above.']
   ];
   const gemstoneNames = `Abalony shell
 Amber
@@ -132,6 +134,7 @@ Zircon`.split('\n');
   const definitions = new Map(components.map(item => [item[0], item]));
   const active = [];
   const rates = { silver: null, gold: null };
+  let workflow = 'existing';
   const TROY_GRAMS = 31.1034768;
   let stoneSequence = 0;
   const $ = id => document.getElementById(id);
@@ -153,6 +156,54 @@ Zircon`.split('\n');
   let photoUrl = null;
   const checked = id => [...$(id).querySelectorAll('input:checked')].map(input => input.value);
   const radio = name => document.querySelector(`input[name="${name}"]:checked`)?.value || '';
+  function setWorkflow(next) {
+    workflow = next === 'new' ? 'new' : 'existing';
+    $('existingWorkflow').hidden = workflow !== 'existing';
+    $('newWorkflow').hidden = workflow !== 'new';
+    document.querySelector(`input[name="workflow"][value="${workflow}"]`).checked = true;
+    $('trialWorkflowPreview').textContent = workflow === 'existing' ? 'Existing product' : 'New product';
+    update();
+  }
+  function addExceptionRow(kind, saved = {}) {
+    const host = $(kind === 'tier' ? 'tierRows' : 'customerPriceRows');
+    const row = document.createElement('div');
+    row.className = 'exception-row';
+    row.dataset.kind = kind;
+    const fields = kind === 'tier'
+      ? [['label', 'Tier name', 'text'], ['minimum', 'Minimum units', 'number'], ['wholesale', 'Wholesale price', 'number']]
+      : [['customer', 'Customer / company', 'text'], ['wholesale', 'Wholesale price', 'number'], ['retail', 'Retail price', 'number']];
+    for (const [name, label, type] of fields) {
+      const wrap = document.createElement('label');
+      wrap.className = 'exception-field';
+      wrap.textContent = label;
+      const input = document.createElement('input');
+      input.className = 'text-input';
+      input.dataset.name = name;
+      input.type = type;
+      if (type === 'number') { input.min = name === 'minimum' ? '1' : '0'; input.step = name === 'minimum' ? '1' : '0.01'; }
+      input.value = saved[name] ?? '';
+      wrap.append(input);
+      row.append(wrap);
+    }
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'link-button';
+    remove.textContent = 'Remove';
+    remove.addEventListener('click', () => { row.remove(); update(); });
+    row.append(remove);
+    host.append(row);
+    update();
+  }
+  function exceptionSnapshot(kind) {
+    return [...$(kind === 'tier' ? 'tierRows' : 'customerPriceRows').querySelectorAll('.exception-row')].map(row =>
+      Object.fromEntries([...row.querySelectorAll('[data-name]')].map(input => [input.dataset.name, input.value.trim()])));
+  }
+  function restoreExceptions(tiers = [], customers = []) {
+    $('tierRows').replaceChildren();
+    $('customerPriceRows').replaceChildren();
+    for (const tier of tiers) addExceptionRow('tier', tier);
+    for (const customer of customers) addExceptionRow('customer', customer);
+  }
   function populateGemstones() {
     for (const id of ['catalogStone1', 'catalogStone2', 'catalogStone3', 'catalogStone4']) {
       const select = $(id);
@@ -457,8 +508,8 @@ Zircon`.split('\n');
     if (['silver', 'gold', 'brass'].includes(id)) return metalAmount(id);
     if (id === 'gemstones') return stones().some(stone => stone.type && stone.quantity !== '' && stone.carats !== '' && stone.pricePerCarat !== '')
       ? stones().reduce((sum, stone) => sum + stoneAmount(stone), 0) : legacyAmount(id);
-    const n = number(componentInput(id));
-    return valid(n) ? n : 0;
+    const q = number($('qty-' + id)), rate = number(componentInput(id));
+    return valid(q) && valid(rate) ? q * rate : 0;
   }
   function subtotal() {
     return active.reduce((sum, id) => sum + componentAmount(id), 0);
@@ -467,7 +518,7 @@ Zircon`.split('\n');
     return active.some(id => {
       if (['silver', 'gold', 'brass'].includes(id)) return entered($('legacy-' + id)) || (entered($('grams-' + id)) && (id === 'brass' ? entered($('spot-brass')) : !!rates[id] && metalFactor(id) !== null));
       if (id === 'gemstones') return entered($('legacy-' + id)) || stones().some(stone => stone.type && [stone.quantity, stone.carats, stone.pricePerCarat].every(v => v !== '' && valid(Number(v))));
-      return entered(componentInput(id));
+      return entered($('qty-' + id)) && value('unit-' + id) !== '' && entered(componentInput(id));
     });
   }
   function allComponentsComplete() {
@@ -490,7 +541,7 @@ Zircon`.split('\n');
           [stone.quantity, stone.carats, stone.pricePerCarat].every(v => v !== '' && valid(Number(v))));
         return entered($('legacy-gemstones'));
       }
-      return entered(componentInput(id));
+      return entered($('qty-' + id)) && value('unit-' + id) !== '' && entered(componentInput(id));
     });
   }
   function field(parent, label, id, saved = '', prefix = '', suffix = '') {
@@ -517,6 +568,7 @@ Zircon`.split('\n');
   }
   async function refreshMetal(id) {
     const state = $('rate-' + id);
+    const previous = rates[id];
     state.textContent = 'Loading Gold API spot quote…';
     try {
       const symbol = id === 'gold' ? 'XAU' : 'XAG';
@@ -530,10 +582,10 @@ Zircon`.split('\n');
       update();
     } catch {
       if (!active.includes(id)) return;
-      rates[id] = null;
-      state.textContent = 'Gold API unavailable. Live cost paused; retry quote.';
+      rates[id] = previous;
       $('breakdownComplete').checked = false;
       update();
+      state.textContent = previous ? state.textContent + ' · Refresh failed; saved quote retained.' : 'Gold API unavailable. Live cost paused; retry quote.';
     }
   }
   function addStone(saved = {}) {
@@ -659,14 +711,24 @@ Zircon`.split('\n');
           option.textContent = optionText;
           basis.append(option);
         }
-        basis.value = detail.basis || '';
+        basis.value = detail.basis || 'alloy';
         basisWrap.append(basisLabel, basis);
         fields.append(basisWrap);
         const finenessWrap = document.createElement('div');
         finenessWrap.id = 'fineness-wrap-' + id;
         finenessWrap.className = 'component-subfield metal-fineness';
         finenessWrap.hidden = true;
-        const finenessInput = field(finenessWrap, 'Alloy fineness', 'fineness-' + id, detail.fineness ?? '', '', '%');
+        if (id === 'gold') {
+          const preset = document.createElement('select');
+          preset.id = 'goldPreset';
+          preset.className = 'text-input';
+          preset.setAttribute('aria-label', 'Gold fineness preset');
+          for (const [v, label] of [['58.5','14K · 58.5%'],['75','18K · 75%'],['custom','Custom fineness']]) preset.add(new Option(label, v));
+          preset.value = ['58.5','75'].includes(String(detail.fineness ?? '75')) ? String(detail.fineness ?? '75') : 'custom';
+          preset.addEventListener('change', () => { if (preset.value !== 'custom') $('fineness-gold').value = preset.value; $('breakdownComplete').checked = false; update(); });
+          finenessWrap.append(preset);
+        }
+        const finenessInput = field(finenessWrap, 'Alloy fineness', 'fineness-' + id, detail.fineness ?? (id === 'silver' ? '92.5' : '75'), '', '%');
         finenessInput.min = '0.01';
         finenessInput.max = '100';
         finenessInput.step = '0.01';
@@ -716,20 +778,26 @@ Zircon`.split('\n');
       fields.append(note, list, add);
       row.append(fields);
     } else {
-      const money = document.createElement('div');
-      money.className = 'input-money';
-      const symbol = document.createElement('span');
-      symbol.textContent = '$US';
-      const input = document.createElement('input');
-      input.id = 'component-' + id;
-      input.type = 'number';
-      input.min = '0';
-      input.step = '0.01';
-      input.inputMode = 'decimal';
-      input.placeholder = '0.00';
-      input.value = amount;
-      money.append(symbol, input);
-      row.append(money);
+      const fields = document.createElement('div');
+      fields.className = 'generic-fields';
+      field(fields, 'Quantity', 'qty-' + id, detail.quantity ?? '1');
+      const unit = document.createElement('label');
+      unit.className = 'component-subfield';
+      unit.textContent = 'Unit';
+      const unitInput = document.createElement('input');
+      unitInput.id = 'unit-' + id;
+      unitInput.className = 'text-input';
+      unitInput.maxLength = 24;
+      unitInput.value = detail.unit ?? (['production','setting'].includes(id) ? 'hour' : 'each');
+      unit.append(unitInput);
+      fields.append(unit);
+      field(fields, 'Rate', 'component-' + id, detail.rate ?? amount, '$US', '/ unit');
+      const amountView = document.createElement('strong');
+      amountView.id = 'amount-' + id;
+      amountView.className = 'metal-amount';
+      amountView.textContent = dollars(0);
+      fields.append(amountView);
+      row.append(fields);
     }
     if (['silver', 'gold', 'brass', 'gemstones'].includes(id) && ((detail.legacyAmount ?? '') !== '' || (amount !== '' && !Object.keys(detail).length))) {
       const legacy = document.createElement('div');
@@ -748,9 +816,9 @@ Zircon`.split('\n');
     syncEmptyComponents();
     syncPicker();
     $('dealerMarkupRow').hidden = !active.some(x => ['silver', 'gold', 'brass', 'gemstones'].includes(x));
-    if (id !== 'brass' && ['silver', 'gold'].includes(id)) {
-      rates[id] = null;
-      refreshMetal(id);
+    if (['silver', 'gold'].includes(id)) {
+      rates[id] = detail.rate?.usdPerGram ? detail.rate : null;
+      if (!rates[id]) refreshMetal(id);
     }
     if (id === 'gemstones') for (const stone of detail.stones || []) addStone(stone);
     update();
@@ -783,12 +851,14 @@ Zircon`.split('\n');
       if (state && rates[id]) {
         const rate = rates[id];
         const markup = number($('dealerMarkup'));
-        state.textContent = `Gold API spot ${dollars(rate.usdPerGram)}/g · ${new Date(rate.updatedAt).toLocaleString()}${valid(markup) ? ` · with markup ${dollars(rate.usdPerGram * (1 + markup / 100))}/g` : ''}`;
+        const age = Date.now() - Date.parse(rate.updatedAt);
+        const freshness = Number.isFinite(age) && age >= 0 && age < 86400000 ? 'current (<24h)' : 'older saved quote';
+        state.textContent = `${rate.provider || 'Gold API'} pure-metal spot ${dollars(rate.usdPerGram)}/g · ${new Date(rate.updatedAt).toLocaleString()} · ${freshness}${valid(markup) ? ` · marked-up fine-metal rate ${dollars(rate.usdPerGram * (1 + markup / 100))}/g` : ''}`;
       }
     }
-    for (const id of ['gold', 'silver', 'brass']) {
+    for (const id of active.filter(x => x !== 'gemstones')) {
       const amount = $('amount-' + id);
-      if (amount) amount.textContent = dollars(metalAmount(id));
+      if (amount) amount.textContent = dollars(componentAmount(id));
     }
     for (const row of document.querySelectorAll('.stone-row')) {
       const stone = { quantity: row.querySelector('.stone-quantity').value, carats: row.querySelector('.stone-carats').value, pricePerCarat: row.querySelector('.stone-price').value };
@@ -801,14 +871,16 @@ Zircon`.split('\n');
     $('breakdownReadiness').textContent = complete ? 'All added components have values. Confirm that no applicable costs are missing.' : 'Complete every added component before applying its subtotal.';
     $('adoptSubtotal').disabled = !complete || !$('breakdownComplete').checked;
     const cost = number($('totalCost'));
-    const base = number($('commercialBase'));
-    const wholesale = number($('wholesaleMultiplier'));
-    const retail = number($('retailMultiplier'));
-    const wholesaleAmount = valid(base) && valid(wholesale) ? base * wholesale : null;
-    const retailAmount = valid(base) && valid(retail) ? base * retail : null;
-    $('costOverview').textContent = valid(cost) ? dollars(cost) : dollars(0);
-    $('wholesaleOverview').textContent = valid(wholesaleAmount) ? dollars(wholesaleAmount) : dollars(0);
-    $('retailOverview').textContent = valid(retailAmount) ? dollars(retailAmount) : dollars(0);
+    const wholesale = number($('newWholesaleMultiplier'));
+    const retail = number($('newRetailMultiplier'));
+    const suggestedWholesale = valid(cost) && valid(wholesale) ? cost * wholesale : null;
+    const suggestedRetail = valid(cost) && valid(retail) ? cost * retail : null;
+    $('suggestedWholesale').textContent = suggestedWholesale === null ? 'Not set' : dollars(suggestedWholesale);
+    $('suggestedRetail').textContent = suggestedRetail === null ? 'Not set' : dollars(suggestedRetail);
+    $('copySuggestions').disabled = suggestedWholesale === null || suggestedRetail === null;
+    $('costQuality').textContent = !valid(cost) ? 'Enter a total cost to calculate suggestions.' : !($('costVerified').checked) ? 'Cost not yet verified. Suggestions are provisional.' : active.length && !complete ? 'Cost checked, but the optional component breakdown is incomplete.' : active.length && Math.abs(subtotal() - cost) > .005 ? 'Cost checked, but it differs from the optional component subtotal. Review before approval.' : 'Total cost checked for this trial.';
+    const proposedW = number($('proposedWholesale')), proposedR = number($('proposedRetail'));
+    $('proposalStatus').textContent = proposedW === null && proposedR === null ? 'Enter proposed prices or copy the suggestions.' : suggestedWholesale !== null && suggestedRetail !== null && (proposedW !== null && Math.abs(proposedW - suggestedWholesale) > .005 || proposedR !== null && Math.abs(proposedR - suggestedRetail) > .005) ? 'Manual proposed price differs from the current suggestion. It is preserved.' : 'Proposed prices remain editable and will not change automatically.';
     refreshMedusaViews();
   }
   function entries() {
@@ -829,22 +901,26 @@ Zircon`.split('\n');
     }
   }
   function snapshot() {
+    const selected = active.slice();
+    const details = Object.fromEntries(selected.map(id => [id,
+      id === 'gemstones' ? { stones: stones(), legacyAmount: $('legacy-' + id)?.value ?? '' } :
+      ['silver', 'gold', 'brass'].includes(id) ? { grams: value('grams-' + id), spot: id === 'brass' ? value('spot-brass') : '', basis: id === 'brass' ? '' : value('basis-' + id), fineness: id === 'brass' ? '' : value('fineness-' + id), rate: rates[id], legacyAmount: $('legacy-' + id)?.value ?? '' } :
+      { quantity: value('qty-' + id), unit: value('unit-' + id), rate: value('component-' + id) }
+    ]));
     return {
       id: crypto.randomUUID?.() ?? String(Date.now()) + '-' + String(Math.random()),
       savedAt: new Date().toISOString(),
       productReference: value('productReference'),
       feedback: value('feedback'),
-      totalCost: value('totalCost'),
-      commercialBase: value('commercialBase'),
-      wholesaleMultiplier: value('wholesaleMultiplier'),
-      retailMultiplier: value('retailMultiplier'),
-      componentTypes: active.slice(),
-      components: Object.fromEntries(active.map(id => [id, ['silver', 'gold', 'brass', 'gemstones'].includes(id) ? componentAmount(id).toFixed(2) : componentInput(id).value.trim()])),
-      dealerMarkup: value('dealerMarkup'),
-      componentDetails: Object.fromEntries(active.map(id => [id,
-        id === 'gemstones' ? { stones: stones(), legacyAmount: $('legacy-' + id)?.value ?? '' } :
-        ['silver', 'gold', 'brass'].includes(id) ? { grams: value('grams-' + id), spot: id === 'brass' ? value('spot-brass') : '', basis: id === 'brass' ? '' : value('basis-' + id), fineness: id === 'brass' ? '' : value('fineness-' + id), rate: rates[id], legacyAmount: $('legacy-' + id)?.value ?? '' } : {}
-      ])),
+      workflow,
+      existing: workflow === 'existing' ? { wholesale: value('existingWholesalePrice'), retail: value('existingRetailPrice'), tiers: exceptionSnapshot('tier'), customerPrices: exceptionSnapshot('customer') } : null,
+      newProduct: workflow === 'new' ? {
+        totalCost: value('totalCost'), wholesaleMultiplier: value('newWholesaleMultiplier'), retailMultiplier: value('newRetailMultiplier'), costVerified: $('costVerified').checked,
+        suggestedWholesale: number($('totalCost')) * number($('newWholesaleMultiplier')),
+        suggestedRetail: number($('totalCost')) * number($('newRetailMultiplier')),
+        proposedWholesale: value('proposedWholesale'), proposedRetail: value('proposedRetail'),
+        componentTypes: selected, components: Object.fromEntries(selected.map(id => [id, componentAmount(id).toFixed(2)])), componentDetails: details, dealerMarkup: value('dealerMarkup')
+      } : null,
       catalog: catalogSnapshot()
     };
   }
@@ -867,7 +943,9 @@ Zircon`.split('\n');
       const title = document.createElement('strong');
       title.textContent = item.productReference || item.catalog?.sku || item.catalog?.code || 'Sample product';
       const cost = document.createElement('strong');
-      cost.textContent = item.totalCost !== '' && valid(Number(item.totalCost)) ? dollars(Number(item.totalCost)) : '—';
+      const kind = item.workflow || 'legacy';
+      const amount = kind === 'existing' ? item.existing?.wholesale : kind === 'new' ? item.newProduct?.totalCost : item.totalCost;
+      cost.textContent = kind === 'existing' ? `Existing · wholesale ${amount !== '' && amount != null ? dollars(Number(amount)) : 'not set'}` : `${kind === 'legacy' ? 'Earlier entry' : 'New · cost'} ${amount !== '' && amount != null ? dollars(Number(amount)) : 'not set'}`;
       head.append(title, cost);
       const date = document.createElement('small');
       date.textContent = new Date(item.savedAt).toLocaleString();
@@ -894,19 +972,33 @@ Zircon`.split('\n');
     }
   }
   function openEntry(item) {
-    for (const id of ['productReference', 'feedback', 'totalCost', 'commercialBase', 'wholesaleMultiplier', 'retailMultiplier']) put(id, item[id]);
+    resetForm();
+    put('productReference', item.productReference);
+    put('feedback', item.feedback);
     restoreCatalog(item.catalog);
-    clearComponents();
-    put('dealerMarkup', item.dealerMarkup ?? '5');
-    const selected = Array.isArray(item.componentTypes)
-      ? item.componentTypes
-      : components.map(([id]) => id).filter(id => (item.components?.[id] ?? '') !== '');
-    for (const id of selected) addComponent(id, item.components?.[id] ?? '', item.componentDetails?.[id] || {});
-    $('saveStatus').textContent = 'Saved entry opened. Saving again creates another copy.';
+    if (item.workflow === 'existing') {
+      setWorkflow('existing');
+      put('existingWholesalePrice', item.existing?.wholesale);
+      put('existingRetailPrice', item.existing?.retail);
+      restoreExceptions(item.existing?.tiers, item.existing?.customerPrices);
+    } else {
+      setWorkflow('new');
+      const data = item.workflow === 'new' ? item.newProduct || {} : item;
+      put('totalCost', data.totalCost);
+      put('newWholesaleMultiplier', item.workflow === 'new' ? data.wholesaleMultiplier : '2.00');
+      put('newRetailMultiplier', item.workflow === 'new' ? data.retailMultiplier : '4.00');
+      put('proposedWholesale', data.proposedWholesale);
+      put('proposedRetail', data.proposedRetail);
+      put('dealerMarkup', data.dealerMarkup ?? '5');
+      const selected = Array.isArray(data.componentTypes) ? data.componentTypes : components.map(([id]) => id).filter(id => (data.components?.[id] ?? '') !== '');
+      for (const id of selected) addComponent(id, data.components?.[id] ?? '', data.componentDetails?.[id] || {});
+      $('costVerified').checked = item.workflow === 'new' && data.costVerified === true;
+      if (selected.length) $('componentPanel').open = true;
+    }
+    $('saveStatus').textContent = item.workflow ? 'Saved entry opened. Saving again creates another copy.' : 'Earlier entry opened. Previous commercial-base pricing was not imported as a cost-based suggestion.';
     closeDrawer();
     update();
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    openEditor('catalogPanel');
   }
   function save() {
     if (!value('productReference')) {
@@ -914,32 +1006,36 @@ Zircon`.split('\n');
       $('productReference').focus();
       return;
     }
-    const cost = number($('totalCost'));
-    if (!valid(cost)) {
+    if (workflow === 'new' && !valid(number($('totalCost')))) {
       $('saveStatus').textContent = 'Enter a valid Total Product Cost before saving.';
-      closeDrawer();
-      openEditor('costPanel', 'totalCost');
-      return;
+      closeDrawer(); $('totalCost').focus(); return;
     }
-    const optional = [
-      ...active.filter(id => !['silver', 'gold', 'brass', 'gemstones'].includes(id)).map(componentInput),
+    const optional = workflow === 'existing' ? [
+      $('existingWholesalePrice'), $('existingRetailPrice'),
+      ...document.querySelectorAll('.exception-row input[type=number]')
+    ] : [
+      $('totalCost'), $('newWholesaleMultiplier'), $('newRetailMultiplier'), $('proposedWholesale'), $('proposedRetail'),
+      ...active.filter(id => !['silver', 'gold', 'brass', 'gemstones'].includes(id)).flatMap(id => [$('qty-' + id), componentInput(id)]),
       ...active.filter(id => ['silver', 'gold', 'brass'].includes(id)).map(id => $('grams-' + id)),
       ...(active.includes('brass') ? [$('spot-brass')] : []),
       ...document.querySelectorAll('.stone-quantity, .stone-carats, .stone-price'),
-      ...document.querySelectorAll('[id^=legacy-]'),
-      $('dealerMarkup'), $('commercialBase'), $('wholesaleMultiplier'), $('retailMultiplier'),
-      $('catalogSilverWeight'), $('catalogGoldWeight'), $('catalogGemstonesWeight'), $('catalogTotalWeight')
+      ...document.querySelectorAll('[id^=legacy-]'), $('dealerMarkup')
     ];
+    optional.push($('catalogSilverWeight'), $('catalogGoldWeight'), $('catalogGemstonesWeight'), $('catalogTotalWeight'));
     if (optional.some(input => input.value.trim() !== '' && !valid(number(input)))) {
       $('saveStatus').textContent = 'Amounts and multipliers must be zero or greater.';
       return;
     }
-    for (const id of ['silver', 'gold']) {
+    if (workflow === 'new' && (!valid(number($('newWholesaleMultiplier'))) || !valid(number($('newRetailMultiplier'))))) {
+      $('saveStatus').textContent = 'Enter valid wholesale and retail cost multipliers.'; return;
+    }
+    for (const id of workflow === 'new' ? ['silver', 'gold'] : []) {
       if (active.includes(id) && value('grams-' + id) !== '' && metalFactor(id) === null) {
         $('saveStatus').textContent = 'Choose the weight basis and, for alloy weight, a valid fineness for ' + id + '.';
         $('componentsStatus').textContent = $('saveStatus').textContent;
         closeDrawer();
-        openEditor('componentPanel', value('basis-' + id) === 'alloy' ? 'fineness-' + id : 'basis-' + id);
+        $('componentPanel').open = true;
+        $(value('basis-' + id) === 'alloy' ? 'fineness-' + id : 'basis-' + id).focus();
         return;
       }
     }
@@ -957,7 +1053,7 @@ Zircon`.split('\n');
       return;
     }
     const catalogKeys = ['section','categories','sku','metals','silverWeight','goldWeight','gemstonesWeight','totalWeight','gemstone1','gemstone2','gemstone3','gemstone4','sizes','status','show','tags','description','descriptionHebrew','descriptionEnabled','hebrewOverride','internalNote','imageFileName','relatedProducts'];
-    const keys = ['id', 'savedAt', 'productReference', ...catalogKeys, 'totalCost', ...components.map(([id]) => id), 'componentSubtotal', 'dealerMarkup', 'componentDetails', 'commercialBase', 'wholesaleMultiplier', 'wholesalePrice', 'retailMultiplier', 'retailPrice', 'feedback'];
+    const keys = ['id', 'savedAt', 'productReference', 'workflow', ...catalogKeys, 'approvedWholesale', 'approvedRetail', 'wholesaleTiers', 'customerPrices', 'totalProductCost', 'costVerified', ...components.map(([id]) => id), 'componentSubtotal', 'dealerMarkup', 'componentDetails', 'wholesaleCostMultiplier', 'suggestedWholesale', 'retailCostMultiplier', 'suggestedRetail', 'proposedWholesale', 'proposedRetail', 'feedback', 'earlierEntryData'];
     const quote = input => {
       const raw = String(input ?? '');
       const safe = /^\s*[=+\-@]/.test(raw) ? "'" + raw : raw;
@@ -965,35 +1061,44 @@ Zircon`.split('\n');
     };
     const rows = [keys.map(quote).join(',')];
     for (const item of list) {
-      const sum = components.reduce((total, [id]) => total + (Number(item.components?.[id]) || 0), 0);
-      const price = id => item.commercialBase !== '' && item[id] !== '' ? (Number(item.commercialBase) * Number(item[id])).toFixed(2) : '';
+      const data = item.newProduct || (item.workflow ? {} : item);
+      const approved = item.existing || {};
+      const sum = components.reduce((total, [id]) => total + (Number(data.components?.[id]) || 0), 0);
       const catalog = item.catalog || {};
       const catalogValues = [catalog.section, (catalog.categories || []).join('; '), catalog.sku ?? catalog.code, (catalog.metals || []).join('; '), catalog.silverWeight, catalog.goldWeight, catalog.gemstonesWeight, catalog.totalWeight,
         ...Array.from({ length: 4 }, (_, i) => catalog.gemstones?.[i] ?? ''), catalog.sizes, catalog.status, (catalog.show || [catalog.audience || 'All users', 'Retail']).join('; '), (catalog.tags || []).join('; '), catalog.description, catalog.descriptionHebrew, catalog.descriptionEnabled !== false, catalog.hebrewOverride === true, catalog.internalNote, catalog.imageFileName, (catalog.relatedProducts || []).join('; ')];
       rows.push([
-        item.id, item.savedAt, item.productReference, ...catalogValues, item.totalCost,
-        ...components.map(([id]) => item.components?.[id] ?? ''),
-        sum.toFixed(2), item.dealerMarkup ?? '', JSON.stringify(item.componentDetails || {}), item.commercialBase, item.wholesaleMultiplier,
-        price('wholesaleMultiplier'), item.retailMultiplier,
-        price('retailMultiplier'), item.feedback
+        item.id, item.savedAt, item.productReference, item.workflow || 'earlier entry', ...catalogValues,
+        approved.wholesale ?? '', approved.retail ?? '', JSON.stringify(approved.tiers || []), JSON.stringify(approved.customerPrices || []),
+        data.totalCost ?? '', data.costVerified ?? '',
+        ...components.map(([id]) => data.components?.[id] ?? ''),
+        data.componentTypes?.length ? sum.toFixed(2) : '', data.dealerMarkup ?? '', JSON.stringify(data.componentDetails || {}),
+        data.wholesaleMultiplier ?? '', data.suggestedWholesale ?? '', data.retailMultiplier ?? '', data.suggestedRetail ?? '',
+        data.proposedWholesale ?? '', data.proposedRetail ?? '', item.feedback,
+        item.workflow ? '' : JSON.stringify(item)
       ].map(quote).join(','));
     }
     const blob = new Blob(['\ufeff' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'zuman-cost-pricing-trial.csv';
+    link.download = 'zuman-product-trial.csv';
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     $('saveStatus').textContent = 'Exported ' + list.length + (list.length === 1 ? ' entry.' : ' entries.');
   }
   function resetForm() {
-    for (const id of ['totalCost', 'commercialBase', 'wholesaleMultiplier', 'retailMultiplier', 'productReference', 'feedback']) put(id, '');
+    for (const id of ['totalCost', 'existingWholesalePrice', 'existingRetailPrice', 'proposedWholesale', 'proposedRetail', 'productReference', 'feedback']) put(id, '');
+    put('newWholesaleMultiplier', '2.00'); put('newRetailMultiplier', '4.00');
     put('dealerMarkup', '5');
+    $('costVerified').checked = false;
+    restoreExceptions([], []);
     restoreCatalog();
     clearComponents();
+    $('componentPanel').open = false;
+    setWorkflow('existing');
     closeEditor();
-    for (const id of ['componentsStatus', 'pricingStatus']) $(id).textContent = '';
+    $('componentsStatus').textContent = '';
     $('saveStatus').textContent = 'Product fields reset. Saved entries remain available.';
     update();
   }
@@ -1008,7 +1113,7 @@ Zircon`.split('\n');
     $('trialDrawer').hidden = true;
   }
 
-  const editorIds = ['catalogPanel', 'pricingPanel', 'costPanel', 'componentPanel'];
+  const editorIds = ['catalogPanel'];
   function openEditor(id, focusId) {
     for (const panelId of editorIds) $(panelId).open = panelId === id;
     $('editorBackdrop').hidden = false;
@@ -1036,19 +1141,29 @@ Zircon`.split('\n');
   $('componentSelect').addEventListener('change', event => {
     if (event.target.value) addComponent(event.target.value);
   });
-  $('componentPanel').querySelector('.editor-content').addEventListener('input', event => {
+  $('componentPanel').querySelector('.component-content').addEventListener('input', event => {
     if (event.target !== $('breakdownComplete')) $('breakdownComplete').checked = false;
+    if (event.target.id === 'fineness-gold') $('goldPreset').value = ['58.5','75'].includes(value('fineness-gold')) ? value('fineness-gold') : 'custom';
     update();
   });
-  $('componentPanel').querySelector('.editor-content').addEventListener('change', event => {
+  $('componentPanel').querySelector('.component-content').addEventListener('change', event => {
     if (event.target.id === 'basis-silver') syncFineness('silver');
     if (event.target.id === 'basis-gold') syncFineness('gold');
     if (event.target !== $('breakdownComplete')) $('breakdownComplete').checked = false;
     update();
   });
   $('breakdownComplete').addEventListener('change', update);
-  $('openComponents').addEventListener('click', () => {
-    openEditor('componentPanel');
+  for (const input of document.querySelectorAll('input[name="workflow"]')) input.addEventListener('change', event => setWorkflow(event.target.value));
+  $('addTier').addEventListener('click', () => addExceptionRow('tier'));
+  $('addCustomerPrice').addEventListener('click', () => addExceptionRow('customer'));
+  $('costVerified').addEventListener('change', update);
+  $('totalCost').addEventListener('input', () => { $('costVerified').checked = false; update(); });
+  $('copySuggestions').addEventListener('click', () => {
+    const cost = number($('totalCost')), wholesale = number($('newWholesaleMultiplier')), retail = number($('newRetailMultiplier'));
+    if (![cost, wholesale, retail].every(valid)) return;
+    put('proposedWholesale', (cost * wholesale).toFixed(2));
+    put('proposedRetail', (cost * retail).toFixed(2));
+    update();
   });
   $('catalogCode').addEventListener('input', refreshMedusaViews);
   $('catalogShow').addEventListener('change', event => { if (event.target.matches('input[type=checkbox]')) updateShow(event.target); });
@@ -1095,19 +1210,9 @@ Zircon`.split('\n');
   $('adoptSubtotal').addEventListener('click', () => {
     if (!hasEnteredComponent() || !allComponentsComplete() || !$('breakdownComplete').checked) return;
     $('totalCost').value = subtotal().toFixed(2);
+    $('costVerified').checked = false;
     $('componentsStatus').textContent = 'Confirmed subtotal applied. Total Product Cost remains editable.';
     $('breakdownComplete').checked = false;
-    update();
-  });
-  $('copyCost').addEventListener('click', () => {
-    const cost = number($('totalCost'));
-    if (!valid(cost)) {
-      $('pricingStatus').textContent = 'Enter Total Product Cost first.';
-      openEditor('costPanel', 'totalCost');
-      return;
-    }
-    $('commercialBase').value = $('totalCost').value;
-    $('pricingStatus').textContent = 'Copied once. Later cost edits will not change the base price.';
     update();
   });
   $('openTrial').addEventListener('click', openDrawer);
