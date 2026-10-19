@@ -880,7 +880,7 @@ Zircon`.split('\n');
     $('copySuggestions').disabled = suggestedWholesale === null || suggestedRetail === null;
     $('costQuality').textContent = !valid(cost) ? 'Enter a total cost to calculate suggestions.' : !($('costVerified').checked) ? 'Cost not yet verified. Suggestions are provisional.' : active.length && !complete ? 'Cost checked, but the optional component breakdown is incomplete.' : active.length && Math.abs(subtotal() - cost) > .005 ? 'Cost checked, but it differs from the optional component subtotal. Review before approval.' : 'Total cost checked for this trial.';
     const proposedW = number($('proposedWholesale')), proposedR = number($('proposedRetail'));
-    $('proposalStatus').textContent = proposedW === null && proposedR === null ? 'Enter proposed prices or copy the suggestions.' : suggestedWholesale !== null && suggestedRetail !== null && (proposedW !== null && Math.abs(proposedW - suggestedWholesale) > .005 || proposedR !== null && Math.abs(proposedR - suggestedRetail) > .005) ? 'Manual proposed price differs from the current suggestion. It is preserved.' : 'Proposed prices remain editable and will not change automatically.';
+    $('proposalStatus').textContent = proposedW === null && proposedR === null ? 'Enter display prices or copy the suggestions once.' : suggestedWholesale !== null && suggestedRetail !== null && (proposedW !== null && Math.abs(proposedW - suggestedWholesale) > .005 || proposedR !== null && Math.abs(proposedR - suggestedRetail) > .005) ? 'Display prices differ from current suggestions. Your entered prices are preserved.' : 'Display prices stay as entered when costs or multipliers change.';
     refreshMedusaViews();
   }
   function entries() {
