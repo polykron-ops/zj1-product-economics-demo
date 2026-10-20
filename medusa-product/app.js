@@ -145,6 +145,16 @@ Zircon`.split('\n');
   const put = (id, v) => { $(id).value = v ?? ''; };
   const relatedProducts = [];
   let previewMode = 'wholesale';
+  function previewUnitPrice() {
+    const qty = number($('previewQty'));
+    if (!Number.isInteger(qty) || qty < 1 || (previewMode === 'wholesale' && qty > 50)) return null;
+    const base = number($(previewMode === 'wholesale' ? 'sketchWholesaleInput' : 'sketchRetailInput'));
+    if (previewMode === 'retail') return valid(base) ? base : null;
+    const tier = exceptionSnapshot('tier')
+      .filter(item => item.minimum !== '' && item.wholesale !== '' && Number(item.minimum) <= qty && valid(Number(item.wholesale)))
+      .sort((a, b) => Number(b.minimum) - Number(a.minimum))[0];
+    return tier ? Number(tier.wholesale) : valid(base) ? base : null;
+  }
   const defaultTiers = () => [
     { label: '2-10 pcs', minimum: '2', discount: '2.5', wholesale: '', priceMode: 'calculated' },
     { label: '10-50 pcs', minimum: '10', discount: '5', wholesale: '', priceMode: 'calculated' }
@@ -241,17 +251,14 @@ Zircon`.split('\n');
       $('previewCartStatus').textContent = '';
       refreshSketchViews();
     });
+    $('previewQty').addEventListener('input', () => { $('previewCartStatus').textContent = ''; });
     $('previewAddCart').addEventListener('click', () => {
       const qty = number($('previewQty'));
       if (!Number.isInteger(qty) || qty < 1 || (previewMode === 'wholesale' && qty > 50)) {
         $('previewCartStatus').textContent = previewMode === 'wholesale' ? 'Enter 1–50 pcs.' : 'Enter a whole number of pcs.';
         return;
       }
-      const base = number($(previewMode === 'wholesale' ? 'sketchWholesaleInput' : 'sketchRetailInput'));
-      const tier = previewMode === 'wholesale' ? exceptionSnapshot('tier')
-        .filter(item => item.minimum !== '' && item.wholesale !== '' && Number(item.minimum) <= qty && valid(Number(item.wholesale)))
-        .sort((a, b) => Number(b.minimum) - Number(a.minimum))[0] : null;
-      const price = tier ? Number(tier.wholesale) : base;
+      const price = previewUnitPrice();
       $('previewCartStatus').textContent = valid(price)
         ? `${qty} pcs · ${dollars(price)} each · ${dollars(qty * price)} total (preview only)`
         : 'Enter a displayed price to preview the cart total.';
@@ -259,7 +266,7 @@ Zircon`.split('\n');
     const attributeRows = [...document.querySelectorAll('.sketch-attribute-list details')];
     const syncExpandAll = () => {
       const allOpen = attributeRows.every(row => row.open);
-      $('expandAllAttributes').textContent = allOpen ? 'Collapse all' : 'Expand all';
+      $('expandAllAttributes').textContent = allOpen ? 'Collapse All' : 'Expand All';
       $('expandAllAttributes').setAttribute('aria-expanded', String(allOpen));
     };
     $('expandAllAttributes').addEventListener('click', () => {
@@ -301,7 +308,6 @@ Zircon`.split('\n');
       ['sketchSize', 'sizesPreview'], ['sketchTagsRow', 'tagsPreview'],
       ['sketchVisible', 'overviewShow'], ['sketchWeight', 'weightsPreview']
     ]) copy(target, source);
-    $('sketchPreviewTitle').textContent = value('sketchTitleInput') || 'Untitled product';
     $('sketchPreviewDescription').textContent = value('catalogDescription');
     $('sketchPreviewDescription').hidden = !descriptionEnabled || !value('catalogDescription');
     const display = [
@@ -311,21 +317,10 @@ Zircon`.split('\n');
     for (const [target, source] of display) if ($(target).value !== value(source)) put(target, value(source));
     $('previewModeToggle').textContent = previewMode === 'wholesale' ? 'Wholesale' : 'Retail';
     $('previewModeToggle').setAttribute('aria-label', `Preview ${previewMode}; switch to ${previewMode === 'wholesale' ? 'Retail' : 'Wholesale'}`);
-    $('previewWholesaleTiers').hidden = previewMode !== 'wholesale';
+    $('previewPriceLabel').textContent = previewMode === 'wholesale' ? 'Select Qty to Display Volume Pricing' : 'Retail Price';
     $('previewQty').max = previewMode === 'wholesale' ? '50' : '';
-    const displayPrice = number($(previewMode === 'wholesale' ? 'sketchWholesaleInput' : 'sketchRetailInput'));
-    $('sketchPreviewPrice').textContent = valid(displayPrice) ? dollars(displayPrice) : displayPrice === null ? '$US 0.00' : '—';
-    const tiers = exceptionSnapshot('tier').filter(item => item.label && item.minimum).slice(0, 2);
-    $('previewWholesaleTiers').replaceChildren(...tiers.map(item => {
-      const cell = document.createElement('div');
-      const label = document.createElement('span');
-      label.textContent = item.label;
-      const amount = document.createElement('strong');
-      const price = item.wholesale === '' ? null : Number(item.wholesale);
-      amount.textContent = valid(price) ? dollars(price) : '$US 0.00';
-      cell.append(label, amount);
-      return cell;
-    }));
+    const previewPrice = previewUnitPrice();
+    $('sketchPreviewPrice').textContent = valid(previewPrice) ? dollars(previewPrice) : '$US 0.00';
     const cost = number($('totalCost'));
     for (const [textId, buttonId, multiplierId] of [
       ['sketchWholesaleSuggestion', 'useWholesaleSuggestion', 'newWholesaleMultiplier'],
@@ -1418,6 +1413,7 @@ Zircon`.split('\n');
     if (event.key === 'Enter') { event.preventDefault(); addRelatedProduct(); }
   });
   document.addEventListener('input', event => {
+    if (event.target.matches('#sketchWholesaleInput, #sketchRetailInput, #previewQty') || event.target.closest('#tierRows')) $('previewCartStatus').textContent = '';
     if (event.target.matches('input[type=number], .stone-type')) update();
     else refreshMedusaViews();
   });
