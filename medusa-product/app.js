@@ -207,6 +207,7 @@ Zircon`.split('\n');
   }
   function buildSketchLayout() {
     const move = (host, node) => $(host).append(node);
+    document.querySelector('.sketch-top-row').append(document.querySelector('.sketch-economics'));
     $('sketchPhotoHost').prepend($('productPhoto').closest('.image-wrap'));
     const imageRow = $('catalogImage').closest('.image-edit-row');
     move('sketchPhotoHost', $('catalogImage'));
@@ -215,7 +216,8 @@ Zircon`.split('\n');
     imageRow.remove();
     $('photoImport').addEventListener('click', () => $('catalogImage').click());
     move('sketchDescriptionHost', $('toggleDescription').closest('.description-heading'));
-    move('sketchDescriptionHost', $('catalogDescription').closest('.description-section'));
+    move('sketchDescriptionHost', $('catalogDescription').closest('.field-row'));
+    $('catalogDescription').setAttribute('aria-label', 'Editable product description');
     move('sketchComponentsHost', $('componentPanel'));
     $('adoptSubtotal').textContent = 'Use subtotal in cost fields';
     move('sketchWholesaleMultiplierHost', $('newWholesaleMultiplier').closest('.input-money'));
@@ -263,18 +265,21 @@ Zircon`.split('\n');
         ? `${qty} pcs · ${dollars(price)} each · ${dollars(qty * price)} total (preview only)`
         : 'Enter a displayed price to preview the cart total.';
     });
-    const attributeRows = [...document.querySelectorAll('.sketch-attribute-list details')];
-    const syncExpandAll = () => {
-      const allOpen = attributeRows.every(row => row.open);
-      $('expandAllAttributes').textContent = allOpen ? 'Collapse All' : 'Expand All';
-      $('expandAllAttributes').setAttribute('aria-expanded', String(allOpen));
-    };
-    $('expandAllAttributes').addEventListener('click', () => {
-      const open = attributeRows.some(row => !row.open);
-      attributeRows.forEach(row => { row.open = open; });
-      syncExpandAll();
+    document.querySelectorAll('.sketch-attributes').forEach(panel => {
+      const attributeRows = [...panel.querySelectorAll('.sketch-attribute-list details')];
+      const button = panel.querySelector('.expand-attributes');
+      const syncExpandAll = () => {
+        const allOpen = attributeRows.every(row => row.open);
+        button.textContent = allOpen ? 'Collapse All' : 'Expand All';
+        button.setAttribute('aria-expanded', String(allOpen));
+      };
+      button.addEventListener('click', () => {
+        const open = attributeRows.some(row => !row.open);
+        attributeRows.forEach(row => { row.open = open; });
+        syncExpandAll();
+      });
+      attributeRows.forEach(row => row.addEventListener('toggle', syncExpandAll));
     });
-    attributeRows.forEach(row => row.addEventListener('toggle', syncExpandAll));
     for (const [, id] of costBuckets) $(id).addEventListener('input', syncCostBuckets);
     for (const [visible, existing, proposed] of [
       ['sketchWholesaleInput', 'existingWholesalePrice', 'proposedWholesale'],
@@ -304,12 +309,10 @@ Zircon`.split('\n');
       ['sketchStatusRow', 'statusBadge'],
       ['sketchSectionRow', 'sectionPreview'],
       ['sketchCategories', 'categoriesPreview'], ['sketchGemstones', 'gemstonesPreview'],
-      ['sketchNote', 'notePreview'],
+      ['sketchNote', 'notePreview'], ['sketchRelated', 'relatedPreview'],
       ['sketchSize', 'sizesPreview'], ['sketchTagsRow', 'tagsPreview'],
       ['sketchVisible', 'overviewShow'], ['sketchWeight', 'weightsPreview']
     ]) copy(target, source);
-    $('sketchPreviewDescription').textContent = value('catalogDescription');
-    $('sketchPreviewDescription').hidden = !descriptionEnabled || !value('catalogDescription');
     const display = [
       ['sketchWholesaleInput', workflow === 'existing' ? 'existingWholesalePrice' : 'proposedWholesale'],
       ['sketchRetailInput', workflow === 'existing' ? 'existingRetailPrice' : 'proposedRetail']
@@ -482,6 +485,7 @@ Zircon`.split('\n');
     $('toggleDescription').setAttribute('aria-checked', String(enabled));
     $('descriptionToggleLabel').textContent = enabled ? 'On' : 'Off';
     document.querySelector('.description-section').classList.toggle('is-disabled', !enabled);
+    $('sketchDescriptionHost').classList.toggle('is-disabled', !enabled);
     $('revertHebrew').disabled = !enabled || !hebrewOverride;
     if (!enabled) cancelTranslation();
     else if (!hebrewOverride && !value('catalogDescriptionHebrew') && value('catalogDescription')) scheduleHebrewTranslation();

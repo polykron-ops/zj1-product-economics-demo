@@ -665,3 +665,52 @@ body.editor-open { overflow: hidden; }
 .sketch-list-head { grid-template-columns: 42% minmax(0,1fr) auto; column-gap: 4px; align-items: center; }
 .sketch-list-head #expandAllAttributes { padding: 2px 0; }
 @media (max-width: 580px) { .sketch-editor-grid { grid-template-columns: 1fr; gap: 20px; } .sketch-related-slots { grid-template-columns: 1fr; } .sketch-preview-prices { display: flex; } .sketch-preview-prices > .btn { align-self: end; } }
+
+/* Preview and calculator above two subject-based field lists. */
+.sketch-top-row { align-items: stretch; }
+.sketch-preview .sketch-photo .image-wrap { height: clamp(300px,30vw,410px); }
+.preview-description-edit { margin: 0 0 15px; min-width: 0; }
+.preview-description-edit .description-heading { justify-content: flex-end; margin: 0 0 4px; padding: 0; border: 0; }
+.preview-description-edit .field-row { margin: 0; }
+.preview-description-edit .field-row > label, .preview-description-edit .helper { display: none; }
+.preview-description-edit textarea { display: block; width: 100%; min-height: 52px; height: 52px; padding: 4px 3px; border: 1px solid transparent; border-radius: 4px; background: transparent; color: #61636d; font-size: 12px; line-height: 1.45; resize: vertical; }
+.preview-description-edit textarea:hover { border-color: #c7d9f6; }
+.preview-description-edit textarea:focus { outline: 2px solid var(--accent-electric); outline-offset: 1px; background: #fff; }
+.preview-description-edit.is-disabled .field-row { display: none; }
+.sketch-field-group-title { margin: 0 0 12px; color: #25272d; font-size: 15px; font-weight: 700; }
+.sketch-attributes .sketch-list-head { padding-left: 8px; padding-right: 8px; }
+.sketch-attributes .sketch-related-slots { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.sketch-attributes .sketch-related-slot { max-width: 290px; }
+
+/* One control size throughout the visible pricing calculator. */
+.sketch-economics { --calc-field-width: 108px; --calc-field-height: 38px; }
+.sketch-economics .sketch-cost-fields { grid-template-columns: repeat(4,var(--calc-field-width)); justify-content: space-between; }
+.sketch-economics .sketch-cost-field { width: var(--calc-field-width); }
+.sketch-economics .sketch-cost-field .input-money,
+.sketch-economics .sketch-guidance-pair .input-money,
+.sketch-economics .sketch-display-price .input-money,
+.sketch-economics .calculated-price,
+.sketch-economics .exception-field input { width: var(--calc-field-width); height: var(--calc-field-height); min-height: var(--calc-field-height); max-width: var(--calc-field-width); }
+.sketch-economics .sketch-cost-field .input-money input,
+.sketch-economics .sketch-cost-field .input-money output { height: 36px; min-height: 36px; }
+.sketch-economics .sketch-guidance-pair { grid-template-columns: repeat(2,var(--calc-field-width)); }
+.sketch-economics .sketch-display-price { grid-template-columns: var(--calc-field-width) auto; }
+.sketch-economics #tierRows .exception-row { grid-template-columns: repeat(4,var(--calc-field-width)) auto; }
+.sketch-economics #customerPriceRows .exception-row { grid-template-columns: repeat(3,var(--calc-field-width)) auto; }
+.sketch-economics #componentPanel .input-money,
+.sketch-economics #componentPanel .text-input { width: var(--calc-field-width); height: var(--calc-field-height); min-height: var(--calc-field-height); max-width: var(--calc-field-width); }
+.sketch-economics #componentPanel .input-money input { height: 36px; }
+.sketch-economics #componentPanel .generic-fields { grid-template-columns: repeat(3,var(--calc-field-width)); justify-content: space-between; }
+.sketch-economics #componentPanel .metal-fields { grid-template-columns: repeat(3,var(--calc-field-width)); }
+.sketch-economics #componentPanel .stone-row { grid-template-columns: repeat(4,var(--calc-field-width)); }
+@media (max-width: 1380px) {
+  .sketch-economics .sketch-cost-fields { grid-template-columns: repeat(2,var(--calc-field-width)); justify-content: start; }
+  .sketch-economics .sketch-guidance-grid { grid-template-columns: 1fr; }
+  .sketch-economics #tierRows .exception-row { grid-template-columns: repeat(2,var(--calc-field-width)); }
+  .sketch-economics #customerPriceRows .exception-row { grid-template-columns: repeat(2,var(--calc-field-width)); }
+  .sketch-economics #componentPanel .stone-row,
+  .sketch-economics #componentPanel .metal-fields { grid-template-columns: repeat(2,var(--calc-field-width)); }
+}
+@media (max-width: 580px) { .sketch-economics #componentPanel .generic-fields { grid-template-columns: repeat(2,var(--calc-field-width)); } }
+@media (max-width: 800px) { .sketch-preview .sketch-photo .image-wrap { height: 300px; } }
+@media (max-width: 580px) { .sketch-preview .sketch-photo .image-wrap { height: 260px; } }
