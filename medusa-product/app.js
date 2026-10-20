@@ -156,7 +156,7 @@ Zircon`.split('\n');
   let photoUrl = null;
   const checked = id => [...$(id).querySelectorAll('input:checked')].map(input => input.value);
   const radio = name => document.querySelector(`input[name="${name}"]:checked`)?.value || '';
-  const costBuckets = [['silver', 'sketchSilverCost'], ['gold', 'sketchGoldCost'], ['gems', 'sketchGemsCost'], ['labor', 'sketchLaborCost'], ['other', 'sketchOtherCost']];
+  const costBuckets = [['material', 'sketchMaterialCost'], ['directLabor', 'sketchDirectLaborCost'], ['overhead', 'sketchOverheadCost'], ['unallocated', 'sketchUnallocatedCost']];
   function syncCostBuckets() {
     const entered = costBuckets.map(([, id]) => $(id)).filter(input => input.value.trim() !== '');
     const invalid = entered.some(input => !valid(number(input)));
@@ -175,9 +175,19 @@ Zircon`.split('\n');
     } else update();
   }
   function restoreCostBuckets(data = {}) {
-    const saved = data.costBuckets || (data.totalCost !== '' && data.totalCost != null ? { other: data.totalCost } : {});
+    const prior = data.costBuckets;
+    const saved = prior?.material !== undefined || prior?.directLabor !== undefined || prior?.overhead !== undefined || prior?.unallocated !== undefined
+      ? prior
+      : prior
+        ? {
+            material: ['silver', 'gold', 'gems'].some(key => prior[key] !== '' && prior[key] != null) ? ['silver', 'gold', 'gems'].reduce((sum, key) => sum + (Number(prior[key]) || 0), 0).toFixed(2) : '',
+            directLabor: prior.labor ?? '',
+            overhead: '',
+            unallocated: prior.other ?? ''
+          }
+        : data.totalCost !== '' && data.totalCost != null ? { unallocated: data.totalCost } : {};
     for (const [key, id] of costBuckets) put(id, saved[key] ?? '');
-    $('sketchOtherCostField').hidden = value('sketchOtherCost') === '';
+    $('sketchUnallocatedCostField').hidden = value('sketchUnallocatedCost') === '';
     syncCostBuckets();
   }
   function buildSketchLayout() {
@@ -240,7 +250,6 @@ Zircon`.split('\n');
       ['sketchSku', 'productCodePreview'], ['sketchSkuRow', 'productCodePreview'],
       ['sketchStatus', 'statusBadge'], ['sketchStatusRow', 'statusBadge'],
       ['sketchSection', 'sectionPreview'], ['sketchSectionRow', 'sectionPreview'],
-      ['sketchCost', 'overviewCost'], ['sketchWholesale', 'overviewWholesale'], ['sketchRetail', 'overviewRetail'],
       ['sketchCategories', 'categoriesPreview'], ['sketchGemstones', 'gemstonesPreview'],
       ['sketchNote', 'notePreview'], ['sketchRelated', 'relatedPreview'],
       ['sketchSize', 'sizesPreview'], ['sketchTags', 'tagsPreview'],
@@ -761,15 +770,7 @@ Zircon`.split('\n');
     $('componentSelect').disabled = active.length === components.length;
   }
   function syncEmptyComponents() {
-    const host = $('componentFields');
-    const old = host.querySelector('.empty-components');
-    if (active.length && old) old.remove();
-    if (!active.length && !old) {
-      const empty = document.createElement('p');
-      empty.className = 'empty-components';
-      empty.textContent = 'No components added';
-      host.append(empty);
-    }
+    $('componentFields').querySelector('.empty-components')?.remove();
   }
   function addComponent(id, amount = '', detail = {}) {
     if (!definitions.has(id) || active.includes(id)) return;
@@ -979,7 +980,8 @@ Zircon`.split('\n');
     const complete = hasEnteredComponent() && allComponentsComplete();
     $('breakdownComplete').disabled = !complete;
     if (!complete) $('breakdownComplete').checked = false;
-    $('breakdownReadiness').textContent = complete ? 'All added components have values. Confirm that no applicable costs are missing.' : 'Complete every added component before applying its subtotal.';
+    $('breakdownReadiness').textContent = complete ? 'Confirm that no applicable costs are missing.' : '';
+    $('breakdownReadiness').hidden = !complete;
     $('adoptSubtotal').disabled = !complete || !$('breakdownComplete').checked;
     const cost = number($('totalCost'));
     const wholesale = number($('newWholesaleMultiplier'));
@@ -1129,7 +1131,7 @@ Zircon`.split('\n');
     if (workflow === 'new' && !valid(number($('totalCost')))) {
       $('saveStatus').textContent = 'Enter valid Cost of Goods amounts before saving.';
       closeDrawer();
-      (costBuckets.map(([, id]) => $(id)).find(input => input.value.trim() !== '' && !valid(number(input))) || $('sketchSilverCost')).focus();
+      (costBuckets.map(([, id]) => $(id)).find(input => input.value.trim() !== '' && !valid(number(input))) || $('sketchMaterialCost')).focus();
       return;
     }
     const optional = workflow === 'existing' ? [
@@ -1213,7 +1215,7 @@ Zircon`.split('\n');
   function resetForm() {
     for (const id of ['totalCost', 'existingWholesalePrice', 'existingRetailPrice', 'proposedWholesale', 'proposedRetail', 'productReference', 'feedback']) put(id, '');
     for (const [, id] of costBuckets) put(id, '');
-    $('sketchOtherCostField').hidden = true;
+    $('sketchUnallocatedCostField').hidden = true;
     $('sketchTotalCostValue').textContent = '0.00';
     put('newWholesaleMultiplier', '2.00'); put('newRetailMultiplier', '4.00');
     put('dealerMarkup', '5');
@@ -1336,11 +1338,10 @@ Zircon`.split('\n');
   $('adoptSubtotal').addEventListener('click', () => {
     if (!hasEnteredComponent() || !allComponentsComplete() || !$('breakdownComplete').checked) return;
     const classified = {
-      silver: active.includes('silver') ? componentAmount('silver') : null,
-      gold: active.includes('gold') ? componentAmount('gold') : null,
-      gems: active.includes('gemstones') ? componentAmount('gemstones') : null,
-      labor: active.some(id => id === 'production' || id === 'setting') ? ['production', 'setting'].filter(id => active.includes(id)).reduce((sum, id) => sum + componentAmount(id), 0) : null,
-      other: active.some(id => ['brass', 'findings', 'plating', 'overhead', 'other'].includes(id)) ? ['brass', 'findings', 'plating', 'overhead', 'other'].filter(id => active.includes(id)).reduce((sum, id) => sum + componentAmount(id), 0) : null
+      material: active.some(id => ['silver', 'gold', 'brass', 'gemstones', 'findings'].includes(id)) ? ['silver', 'gold', 'brass', 'gemstones', 'findings'].filter(id => active.includes(id)).reduce((sum, id) => sum + componentAmount(id), 0) : null,
+      directLabor: active.some(id => ['production', 'setting'].includes(id)) ? ['production', 'setting'].filter(id => active.includes(id)).reduce((sum, id) => sum + componentAmount(id), 0) : null,
+      overhead: active.includes('overhead') ? componentAmount('overhead') : null,
+      unallocated: active.some(id => ['plating', 'other'].includes(id)) ? ['plating', 'other'].filter(id => active.includes(id)).reduce((sum, id) => sum + componentAmount(id), 0) : null
     };
     const cents = Object.fromEntries(Object.entries(classified).filter(([, amount]) => amount !== null).map(([key, amount]) => [key, Math.round(amount * 100)]));
     const difference = Math.round(subtotal() * 100) - Object.values(cents).reduce((sum, amount) => sum + amount, 0);
@@ -1349,7 +1350,7 @@ Zircon`.split('\n');
       cents[largest] += difference;
     }
     for (const [key, id] of costBuckets) put(id, classified[key] === null ? '' : (cents[key] / 100).toFixed(2));
-    $('sketchOtherCostField').hidden = classified.other === null;
+    $('sketchUnallocatedCostField').hidden = classified.unallocated === null;
     $('componentsStatus').textContent = 'Component subtotal applied to the cost fields. Displayed prices were preserved.';
     $('breakdownComplete').checked = false;
     syncCostBuckets();
