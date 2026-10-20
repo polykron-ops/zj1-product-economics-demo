@@ -265,21 +265,6 @@ Zircon`.split('\n');
         ? `${qty} pcs · ${dollars(price)} each · ${dollars(qty * price)} total (preview only)`
         : 'Enter a displayed price to preview the cart total.';
     });
-    document.querySelectorAll('.sketch-attributes').forEach(panel => {
-      const attributeRows = [...panel.querySelectorAll('.sketch-attribute-list details')];
-      const button = panel.querySelector('.expand-attributes');
-      const syncExpandAll = () => {
-        const allOpen = attributeRows.every(row => row.open);
-        button.textContent = allOpen ? 'Collapse All' : 'Expand All';
-        button.setAttribute('aria-expanded', String(allOpen));
-      };
-      button.addEventListener('click', () => {
-        const open = attributeRows.some(row => !row.open);
-        attributeRows.forEach(row => { row.open = open; });
-        syncExpandAll();
-      });
-      attributeRows.forEach(row => row.addEventListener('toggle', syncExpandAll));
-    });
     for (const [, id] of costBuckets) $(id).addEventListener('input', syncCostBuckets);
     for (const [visible, existing, proposed] of [
       ['sketchWholesaleInput', 'existingWholesalePrice', 'proposedWholesale'],

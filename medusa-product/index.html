@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Product details | Zuman Medusa trial</title>
   <meta name="description" content="A standalone Medusa-style product editing trial for Zuman Jewelry.">
-  <link rel="stylesheet" href="./style.css?v=15">
-  <script src="./app.js?v=15" defer></script>
+  <link rel="stylesheet" href="./style.css?v=16">
+  <script src="./app.js?v=16" defer></script>
 </head>
 <body>
   <div class="trial-rail"><span>Operator trial · Medusa layout version</span><span class="trial-links"><a href="../product-economics/">Original version</a><button type="button" id="openTrial">Trial tools <span aria-hidden="true">↗</span></button></span></div>
@@ -46,7 +46,7 @@
             <div class="sketch-price-guidance"><div class="sketch-guidance-grid"><div class="sketch-guidance-item"><label for="newWholesaleMultiplier">Wholesale multiplier</label><div class="sketch-guidance-pair"><div id="sketchWholesaleMultiplierHost"></div><div class="calculated-price"><small>Calculated price</small><output id="sketchWholesaleSuggestion">$US 0.00</output></div></div><div class="sketch-display-price"><label for="sketchWholesaleInput">Wholesale Price</label><div class="input-money"><span>$US</span><input id="sketchWholesaleInput" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div><button type="button" id="useWholesaleSuggestion" class="link-button" disabled>Use calculated</button></div></div><div class="sketch-guidance-item"><label for="newRetailMultiplier">Retail multiplier</label><div class="sketch-guidance-pair"><div id="sketchRetailMultiplierHost"></div><div class="calculated-price"><small>Calculated price</small><output id="sketchRetailSuggestion">$US 0.00</output></div></div><div class="sketch-display-price"><label for="sketchRetailInput">Retail Price</label><div class="input-money"><span>$US</span><input id="sketchRetailInput" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div><button type="button" id="useRetailSuggestion" class="link-button" disabled>Use calculated</button></div></div></div></div>
             <div class="sketch-prices"><div class="sketch-prices-head"><strong>Wholesale tiers</strong><button type="button" id="sketchAddTier" class="link-button">+ Add tier</button></div><div id="sketchTierHost"></div><div class="sketch-prices-head"><strong>Customer-specific prices</strong><button type="button" id="sketchAddCustomer" class="link-button">+ Add customer price</button></div><div id="sketchCustomerHost"></div></div>
           </section>
-          <section class="panel sketch-attributes" aria-label="Product fields"><h2 class="sketch-field-group-title">Product fields</h2><div class="sketch-list-head"><small>Field</small><small>Current Value</small><button type="button" class="expand-attributes link-button" aria-expanded="false">Expand All</button></div><div class="sketch-attribute-list">
+          <section class="panel sketch-attributes" aria-label="Product fields"><h2 class="sketch-field-group-title">Product fields</h2><div class="sketch-attribute-list">
             <details><summary><span>Related products</span><small id="sketchRelated">None</small><b>›</b></summary><div id="sketchRelatedHost" class="sketch-related-slots">
               <label class="sketch-related-slot"><span class="related-image-placeholder" aria-hidden="true">Image</span><span>SKU</span><input class="text-input related-slot-sku" data-slot="0" aria-label="Related product 1 SKU" placeholder="SKU"></label>
               <label class="sketch-related-slot"><span class="related-image-placeholder" aria-hidden="true">Image</span><span>SKU</span><input class="text-input related-slot-sku" data-slot="1" aria-label="Related product 2 SKU" placeholder="SKU"></label>
@@ -57,7 +57,7 @@
             <details><summary><span>SKU</span><small id="sketchSkuRow">AVN01575</small><b>›</b></summary><div id="sketchSkuHost"></div></details>
             <details><summary><span>Weight</span><small id="sketchWeight">Not entered</small><b>›</b></summary><div id="sketchWeightHost"></div></details>
           </div></section>
-          <section class="panel sketch-attributes" aria-label="Catalogue and visibility"><h2 class="sketch-field-group-title">Catalogue &amp; visibility</h2><div class="sketch-list-head"><small>Field</small><small>Current Value</small><button type="button" class="expand-attributes link-button" aria-expanded="false">Expand All</button></div><div class="sketch-attribute-list">
+          <section class="panel sketch-attributes" aria-label="Catalogue and visibility"><h2 class="sketch-field-group-title">Catalogue &amp; visibility</h2><div class="sketch-attribute-list">
             <details><summary><span>Categories</span><small id="sketchCategories">None</small><b>›</b></summary><div id="sketchCategoriesHost"></div></details>
             <details><summary><span>Note</span><small id="sketchNote">None</small><b>›</b></summary><div id="sketchNoteHost"></div></details>
             <details><summary><span>Status</span><small id="sketchStatusRow">Active</small><b>›</b></summary><div id="sketchStatusHost"></div></details>
