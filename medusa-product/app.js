@@ -193,6 +193,7 @@ Zircon`.split('\n');
   function buildSketchLayout() {
     const move = (host, node) => $(host).append(node);
     move('sketchPhotoHost', $('productPhoto').closest('.image-wrap'));
+    move('sketchImageEditorHost', $('catalogImage').closest('.image-edit-row'));
     move('sketchDescriptionHost', $('toggleDescription').closest('.description-heading'));
     move('sketchDescriptionHost', $('catalogDescription').closest('.description-section'));
     move('sketchComponentsHost', $('componentPanel'));
@@ -208,7 +209,6 @@ Zircon`.split('\n');
     const attributeControls = [
       ['sketchCategoriesHost', $('catalogCategories').closest('fieldset')],
       ['sketchGemstonesHost', $('catalogStone1').closest('.field-row')],
-      ['sketchImageHost', $('catalogImage').closest('.image-edit-row')],
       ['sketchNoteHost', $('catalogInternalNote').closest('.field-row')],
       ['sketchRelatedHost', $('relatedProductInput').closest('.field-row')],
       ['sketchSectionHost', $('catalogSection').closest('.field-row')],
@@ -222,6 +222,7 @@ Zircon`.split('\n');
     for (const [host, control] of attributeControls) move(host, control);
     $('sketchAddTier').addEventListener('click', () => $('addTier').click());
     $('sketchAddCustomer').addEventListener('click', () => $('addCustomerPrice').click());
+    $('sketchTitleInput').addEventListener('input', refreshMedusaViews);
     for (const [, id] of costBuckets) $(id).addEventListener('input', syncCostBuckets);
     for (const [visible, existing, proposed] of [
       ['sketchWholesaleInput', 'existingWholesalePrice', 'proposedWholesale'],
@@ -247,20 +248,26 @@ Zircon`.split('\n');
   function refreshSketchViews() {
     const copy = (target, source) => { $(target).textContent = $(source).textContent; };
     for (const [target, source] of [
-      ['sketchSku', 'productCodePreview'], ['sketchSkuRow', 'productCodePreview'],
-      ['sketchStatus', 'statusBadge'], ['sketchStatusRow', 'statusBadge'],
-      ['sketchSection', 'sectionPreview'], ['sketchSectionRow', 'sectionPreview'],
+      ['sketchSkuRow', 'productCodePreview'],
+      ['sketchStatusRow', 'statusBadge'],
+      ['sketchSectionRow', 'sectionPreview'],
       ['sketchCategories', 'categoriesPreview'], ['sketchGemstones', 'gemstonesPreview'],
       ['sketchNote', 'notePreview'], ['sketchRelated', 'relatedPreview'],
-      ['sketchSize', 'sizesPreview'], ['sketchTags', 'tagsPreview'],
-      ['sketchTagsRow', 'tagsPreview'], ['sketchVisible', 'overviewShow'], ['sketchWeight', 'weightsPreview']
+      ['sketchSize', 'sizesPreview'], ['sketchTagsRow', 'tagsPreview'],
+      ['sketchVisible', 'overviewShow'], ['sketchWeight', 'weightsPreview']
     ]) copy(target, source);
-    $('sketchImage').textContent = selectedImageName ? selectedImageName : 'Sample photo';
+    $('sketchPreviewTitle').textContent = value('sketchTitleInput') || 'Untitled product';
+    $('sketchPreviewDescription').textContent = value('catalogDescription');
+    $('sketchPreviewDescription').hidden = !descriptionEnabled || !value('catalogDescription');
     const display = [
       ['sketchWholesaleInput', workflow === 'existing' ? 'existingWholesalePrice' : 'proposedWholesale'],
       ['sketchRetailInput', workflow === 'existing' ? 'existingRetailPrice' : 'proposedRetail']
     ];
     for (const [target, source] of display) if ($(target).value !== value(source)) put(target, value(source));
+    for (const [preview, input] of [['sketchPreviewWholesale', 'sketchWholesaleInput'], ['sketchPreviewRetail', 'sketchRetailInput']]) {
+      const amount = number($(input));
+      $(preview).textContent = valid(amount) ? dollars(amount) : amount === null ? '$US 0.00' : '—';
+    }
     const cost = number($('totalCost'));
     for (const [textId, buttonId, multiplierId] of [
       ['sketchWholesaleSuggestion', 'useWholesaleSuggestion', 'newWholesaleMultiplier'],
@@ -500,7 +507,7 @@ Zircon`.split('\n');
   }
   function catalogSnapshot() {
     return {
-      section: value('catalogSection'), sku: value('catalogCode'),
+      section: value('catalogSection'), sku: value('catalogCode'), title: value('sketchTitleInput'),
       categories: checked('catalogCategories'), metals: ['Gold', 'Silver'].filter((metal, i) => Number(value(i ? 'catalogSilverWeight' : 'catalogGoldWeight')) > 0),
       silverWeight: value('catalogSilverWeight'), goldWeight: value('catalogGoldWeight'), gemstonesWeight: value('catalogGemstonesWeight'), totalWeight: value('catalogTotalWeight'),
       gemstones: ['catalogStone1', 'catalogStone2', 'catalogStone3', 'catalogStone4'].map(value),
@@ -528,6 +535,7 @@ Zircon`.split('\n');
       ['catalogSizes','sizes'], ['catalogInternalNote','internalNote']
     ]) put(id, item[key] ?? (id === 'catalogSection' ? 'Necklaces' : ''));
     put('catalogDescription', item.description ?? SAMPLE_DESCRIPTION);
+    put('sketchTitleInput', item.title ?? 'Mixed Metal Bar Necklace');
     const sampleDraft = (item.description ?? SAMPLE_DESCRIPTION) === SAMPLE_DESCRIPTION;
     put('catalogDescriptionHebrew', item.descriptionHebrew ?? (sampleDraft ? SAMPLE_HEBREW_DESCRIPTION : ''));
     hebrewOverride = item.hebrewOverride ?? (!!item.descriptionHebrew && item.descriptionHebrew !== SAMPLE_HEBREW_DESCRIPTION);
@@ -566,6 +574,7 @@ Zircon`.split('\n');
     const weights = [['Silver', 'catalogSilverWeight'], ['Gold', 'catalogGoldWeight'], ['Gemstones', 'catalogGemstonesWeight'], ['Total', 'catalogTotalWeight']]
       .filter(([, id]) => value(id) !== '').map(([label, id]) => `${label} ${value(id)} g`);
     $('productCodePreview').textContent = sku;
+    document.querySelector('.overview-title-line > strong').textContent = value('sketchTitleInput') || 'Untitled product';
     $('sectionPreview').textContent = section || 'Not set';
     $('overviewShow').textContent = checked('catalogShow').join(' · ') || 'Not set';
     $('overviewSize').textContent = value('catalogSizes') || 'Not set';
@@ -1177,7 +1186,7 @@ Zircon`.split('\n');
       $('saveStatus').textContent = 'Save at least one entry before exporting.';
       return;
     }
-    const catalogKeys = ['section','categories','sku','metals','silverWeight','goldWeight','gemstonesWeight','totalWeight','gemstone1','gemstone2','gemstone3','gemstone4','sizes','status','show','tags','description','descriptionHebrew','descriptionEnabled','hebrewOverride','internalNote','imageFileName','relatedProducts'];
+    const catalogKeys = ['section','categories','sku','title','metals','silverWeight','goldWeight','gemstonesWeight','totalWeight','gemstone1','gemstone2','gemstone3','gemstone4','sizes','status','show','tags','description','descriptionHebrew','descriptionEnabled','hebrewOverride','internalNote','imageFileName','relatedProducts'];
     const keys = ['id', 'savedAt', 'productReference', 'workflow', ...catalogKeys, 'approvedWholesale', 'approvedRetail', 'wholesaleTiers', 'customerPrices', 'totalProductCost', ...costBuckets.map(([key]) => key + 'Cost'), 'costVerified', ...components.map(([id]) => id), 'componentSubtotal', 'dealerMarkup', 'componentDetails', 'wholesaleCostMultiplier', 'suggestedWholesale', 'retailCostMultiplier', 'suggestedRetail', 'proposedWholesale', 'proposedRetail', 'feedback', 'earlierEntryData'];
     const quote = input => {
       const raw = String(input ?? '');
@@ -1190,7 +1199,7 @@ Zircon`.split('\n');
       const approved = item.existing || {};
       const sum = components.reduce((total, [id]) => total + (Number(data.components?.[id]) || 0), 0);
       const catalog = item.catalog || {};
-      const catalogValues = [catalog.section, (catalog.categories || []).join('; '), catalog.sku ?? catalog.code, (catalog.metals || []).join('; '), catalog.silverWeight, catalog.goldWeight, catalog.gemstonesWeight, catalog.totalWeight,
+      const catalogValues = [catalog.section, (catalog.categories || []).join('; '), catalog.sku ?? catalog.code, catalog.title ?? '', (catalog.metals || []).join('; '), catalog.silverWeight, catalog.goldWeight, catalog.gemstonesWeight, catalog.totalWeight,
         ...Array.from({ length: 4 }, (_, i) => catalog.gemstones?.[i] ?? ''), catalog.sizes, catalog.status, (catalog.show || [catalog.audience || 'All users', 'Retail']).join('; '), (catalog.tags || []).join('; '), catalog.description, catalog.descriptionHebrew, catalog.descriptionEnabled !== false, catalog.hebrewOverride === true, catalog.internalNote, catalog.imageFileName, (catalog.relatedProducts || []).join('; ')];
       rows.push([
         item.id, item.savedAt, item.productReference, item.workflow || 'earlier entry', ...catalogValues,

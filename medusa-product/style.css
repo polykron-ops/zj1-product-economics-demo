@@ -545,3 +545,28 @@ body.editor-open { overflow: hidden; }
 @media (max-width: 800px) { .sketch-overview-main { grid-template-columns: 150px minmax(0,1fr); gap: 18px; } .sketch-photo .image-wrap { height: 150px; } .sketch-columns { grid-template-columns: 1fr; } }
 @media (max-width: 580px) { .sketch-overview, .sketch-economics, .sketch-attributes { padding: 20px; } .sketch-overview-main { grid-template-columns: 100px minmax(0,1fr); gap: 13px; } .sketch-photo .image-wrap { width: 100%; height: 100px; } .sketch-identity h1 { font-size: 16px; } .sketch-description, #sketchDisplayPricing { grid-column: 1 / -1; } .sketch-product-content { display: contents; } .sketch-description .description-section { grid-template-columns: 1fr; } .sketch-pricing-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; } .sketch-pricing-grid .sketch-price-block { padding: 10px; } .sketch-section-title { font-size: 18px; } }
 @media (max-width: 390px) { .sketch-cost-fields { grid-template-columns: repeat(2,minmax(0,1fr)); } .sketch-guidance-grid { grid-template-columns: 1fr; } }
+
+/* Equal-width display preview and editor above the equal-width support panels. */
+.sketch-top-row { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; align-items: start; margin-bottom: 14px; }
+.sketch-preview, .sketch-editor { box-sizing: border-box; width: 100%; min-width: 0; padding: 24px 26px 26px; }
+.sketch-preview > .sketch-section-title, .sketch-editor > .sketch-section-title { margin: 0 0 18px; }
+.sketch-site-card { min-width: 0; }
+.sketch-preview .sketch-photo .image-wrap { display: block; width: 100%; height: clamp(170px,22vw,290px); border: 0; background: #fff; }
+.sketch-preview .sketch-photo img { width: 100%; height: 100%; object-fit: contain; }
+.sketch-site-copy { padding-top: 10px; }
+.sketch-site-copy h1 { margin: 0 0 8px; font-size: 19px; line-height: 1.25; }
+.sketch-site-copy p { margin: 0 0 15px; color: #61636d; font-size: 12px; line-height: 1.45; }
+.sketch-preview-prices { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; padding-top: 13px; border-top: 1px solid #ededf0; }
+.sketch-preview-prices > div { display: flex; flex-direction: column; gap: 5px; }
+.sketch-preview-prices span { color: #747680; font-size: 11px; }
+.sketch-preview-prices strong { font-size: 16px; line-height: 1.25; }
+.sketch-editor-meta .field-row { margin-bottom: 9px; }
+.sketch-editor-meta .image-edit-row { display: flex; align-items: center; gap: 12px; }
+.sketch-editor-meta .image-edit-row > label { flex: 0 0 auto; margin: 0; }
+.sketch-editor .sketch-description { margin-top: 14px; padding-top: 13px; }
+.sketch-editor .sketch-description textarea { min-height: 72px; height: 72px; }
+.sketch-editor .sketch-pricing-title { margin-top: 13px; padding-top: 13px; }
+@media (min-width: 1200px) { .sketch-preview { aspect-ratio: 1 / 1; } }
+@media (max-width: 1080px) { .sketch-editor .description-section { grid-template-columns: 1fr; } }
+@media (max-width: 800px) { .sketch-top-row { grid-template-columns: 1fr; } .sketch-preview .sketch-photo .image-wrap { height: 280px; } }
+@media (max-width: 580px) { .sketch-preview, .sketch-editor { padding: 20px; } .sketch-preview .sketch-photo .image-wrap { height: 260px; } .sketch-editor-meta .image-edit-row { flex-wrap: wrap; } }
