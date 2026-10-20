@@ -144,6 +144,11 @@ Zircon`.split('\n');
   const value = id => $(id).value.trim();
   const put = (id, v) => { $(id).value = v ?? ''; };
   const relatedProducts = [];
+  let previewMode = 'wholesale';
+  const defaultTiers = () => [
+    { label: '2-10 pcs', minimum: '2', discount: '2.5', wholesale: '', priceMode: 'calculated' },
+    { label: '10-50 pcs', minimum: '10', discount: '5', wholesale: '', priceMode: 'calculated' }
+  ];
   const tags = ['Necklace', 'Mixed metal', 'Geometric', 'Statement'];
   const SAMPLE_DESCRIPTION = 'A geometric statement necklace with alternating warm and cool metallic bars suspended from a fine chain.';
   const SAMPLE_HEBREW_DESCRIPTION = 'שרשרת בולטת בעיצוב גיאומטרי, עם מוטות מתכתיים בגוונים חמים וקרים לסירוגין התלויים על שרשרת עדינה.';
@@ -215,7 +220,6 @@ Zircon`.split('\n');
       ['sketchCategoriesHost', $('catalogCategories').closest('fieldset')],
       ['sketchGemstonesHost', $('catalogStone1').closest('.field-row')],
       ['sketchNoteHost', $('catalogInternalNote').closest('.field-row')],
-      ['sketchRelatedHost', $('relatedProductInput').closest('.field-row')],
       ['sketchSectionHost', $('catalogSection').closest('.field-row')],
       ['sketchSizeHost', $('catalogSizes').closest('.field-row')],
       ['sketchSkuHost', $('catalogCode').closest('.field-row')],
@@ -228,6 +232,42 @@ Zircon`.split('\n');
     $('sketchAddTier').addEventListener('click', () => $('addTier').click());
     $('sketchAddCustomer').addEventListener('click', () => $('addCustomerPrice').click());
     $('sketchTitleInput').addEventListener('input', refreshMedusaViews);
+    document.querySelectorAll('.related-slot-sku').forEach(input => input.addEventListener('input', () => {
+      relatedProducts[Number(input.dataset.slot)] = input.value.trim();
+      refreshMedusaViews();
+    }));
+    $('previewModeToggle').addEventListener('click', () => {
+      previewMode = previewMode === 'wholesale' ? 'retail' : 'wholesale';
+      $('previewCartStatus').textContent = '';
+      refreshSketchViews();
+    });
+    $('previewAddCart').addEventListener('click', () => {
+      const qty = number($('previewQty'));
+      if (!Number.isInteger(qty) || qty < 1 || (previewMode === 'wholesale' && qty > 50)) {
+        $('previewCartStatus').textContent = previewMode === 'wholesale' ? 'Enter 1–50 pcs.' : 'Enter a whole number of pcs.';
+        return;
+      }
+      const base = number($(previewMode === 'wholesale' ? 'sketchWholesaleInput' : 'sketchRetailInput'));
+      const tier = previewMode === 'wholesale' ? exceptionSnapshot('tier')
+        .filter(item => item.minimum !== '' && item.wholesale !== '' && Number(item.minimum) <= qty && valid(Number(item.wholesale)))
+        .sort((a, b) => Number(b.minimum) - Number(a.minimum))[0] : null;
+      const price = tier ? Number(tier.wholesale) : base;
+      $('previewCartStatus').textContent = valid(price)
+        ? `${qty} pcs · ${dollars(price)} each · ${dollars(qty * price)} total (preview only)`
+        : 'Enter a displayed price to preview the cart total.';
+    });
+    const attributeRows = [...document.querySelectorAll('.sketch-attribute-list details')];
+    const syncExpandAll = () => {
+      const allOpen = attributeRows.every(row => row.open);
+      $('expandAllAttributes').textContent = allOpen ? 'Collapse all' : 'Expand all';
+      $('expandAllAttributes').setAttribute('aria-expanded', String(allOpen));
+    };
+    $('expandAllAttributes').addEventListener('click', () => {
+      const open = attributeRows.some(row => !row.open);
+      attributeRows.forEach(row => { row.open = open; });
+      syncExpandAll();
+    });
+    attributeRows.forEach(row => row.addEventListener('toggle', syncExpandAll));
     for (const [, id] of costBuckets) $(id).addEventListener('input', syncCostBuckets);
     for (const [visible, existing, proposed] of [
       ['sketchWholesaleInput', 'existingWholesalePrice', 'proposedWholesale'],
@@ -238,14 +278,14 @@ Zircon`.split('\n');
         update();
       });
     }
-    for (const [button, target, multiplier] of [
-      ['useWholesaleSuggestion', 'proposedWholesale', 'newWholesaleMultiplier'],
-      ['useRetailSuggestion', 'proposedRetail', 'newRetailMultiplier']
+    for (const [button, existing, proposed, multiplier] of [
+      ['useWholesaleSuggestion', 'existingWholesalePrice', 'proposedWholesale', 'newWholesaleMultiplier'],
+      ['useRetailSuggestion', 'existingRetailPrice', 'proposedRetail', 'newRetailMultiplier']
     ]) {
       $(button).addEventListener('click', () => {
         const cost = number($('totalCost')), factor = number($(multiplier));
         if (!valid(cost) || !valid(factor)) return;
-        put(target, (cost * factor).toFixed(2));
+        put(workflow === 'existing' ? existing : proposed, (cost * factor).toFixed(2));
         update();
       });
     }
@@ -257,7 +297,7 @@ Zircon`.split('\n');
       ['sketchStatusRow', 'statusBadge'],
       ['sketchSectionRow', 'sectionPreview'],
       ['sketchCategories', 'categoriesPreview'], ['sketchGemstones', 'gemstonesPreview'],
-      ['sketchNote', 'notePreview'], ['sketchRelated', 'relatedPreview'],
+      ['sketchNote', 'notePreview'],
       ['sketchSize', 'sizesPreview'], ['sketchTagsRow', 'tagsPreview'],
       ['sketchVisible', 'overviewShow'], ['sketchWeight', 'weightsPreview']
     ]) copy(target, source);
@@ -269,10 +309,23 @@ Zircon`.split('\n');
       ['sketchRetailInput', workflow === 'existing' ? 'existingRetailPrice' : 'proposedRetail']
     ];
     for (const [target, source] of display) if ($(target).value !== value(source)) put(target, value(source));
-    for (const [preview, input] of [['sketchPreviewWholesale', 'sketchWholesaleInput']]) {
-      const amount = number($(input));
-      $(preview).textContent = valid(amount) ? dollars(amount) : amount === null ? '$US 0.00' : '—';
-    }
+    $('previewModeToggle').textContent = previewMode === 'wholesale' ? 'Wholesale' : 'Retail';
+    $('previewModeToggle').setAttribute('aria-label', `Preview ${previewMode}; switch to ${previewMode === 'wholesale' ? 'Retail' : 'Wholesale'}`);
+    $('previewWholesaleTiers').hidden = previewMode !== 'wholesale';
+    $('previewQty').max = previewMode === 'wholesale' ? '50' : '';
+    const displayPrice = number($(previewMode === 'wholesale' ? 'sketchWholesaleInput' : 'sketchRetailInput'));
+    $('sketchPreviewPrice').textContent = valid(displayPrice) ? dollars(displayPrice) : displayPrice === null ? '$US 0.00' : '—';
+    const tiers = exceptionSnapshot('tier').filter(item => item.label && item.minimum).slice(0, 2);
+    $('previewWholesaleTiers').replaceChildren(...tiers.map(item => {
+      const cell = document.createElement('div');
+      const label = document.createElement('span');
+      label.textContent = item.label;
+      const amount = document.createElement('strong');
+      const price = item.wholesale === '' ? null : Number(item.wholesale);
+      amount.textContent = valid(price) ? dollars(price) : '$US 0.00';
+      cell.append(label, amount);
+      return cell;
+    }));
     const cost = number($('totalCost'));
     for (const [textId, buttonId, multiplierId] of [
       ['sketchWholesaleSuggestion', 'useWholesaleSuggestion', 'newWholesaleMultiplier'],
@@ -280,7 +333,7 @@ Zircon`.split('\n');
     ]) {
       const factor = number($(multiplierId));
       const ready = valid(cost) && valid(factor);
-      $(textId).textContent = ready ? `Suggested ${dollars(cost * factor)} · reference only` : 'Enter multiplier';
+      $(textId).textContent = ready ? dollars(cost * factor) : '$US 0.00';
       $(buttonId).disabled = !ready;
     }
   }
@@ -299,7 +352,7 @@ Zircon`.split('\n');
     row.className = 'exception-row';
     row.dataset.kind = kind;
     const fields = kind === 'tier'
-      ? [['label', 'Tier name', 'text'], ['minimum', 'Minimum units', 'number'], ['wholesale', 'Wholesale price', 'number']]
+      ? [['label', 'Tier name', 'text'], ['minimum', 'Minimum units', 'number'], ['discount', 'Discount %', 'number'], ['wholesale', 'Wholesale price', 'number']]
       : [['customer', 'Customer / company', 'text'], ['wholesale', 'Wholesale price', 'number'], ['retail', 'Retail price', 'number']];
     for (const [name, label, type] of fields) {
       const wrap = document.createElement('label');
@@ -309,7 +362,7 @@ Zircon`.split('\n');
       input.className = 'text-input';
       input.dataset.name = name;
       input.type = type;
-      if (type === 'number') { input.min = name === 'minimum' ? '1' : '0'; input.step = name === 'minimum' ? '1' : '0.01'; }
+      if (type === 'number') { input.min = name === 'minimum' ? '1' : '0'; input.step = name === 'minimum' ? '1' : '0.01'; if (name === 'discount') input.max = '100'; }
       input.value = saved[name] ?? '';
       wrap.append(input);
       row.append(wrap);
@@ -321,11 +374,25 @@ Zircon`.split('\n');
     remove.addEventListener('click', () => { row.remove(); update(); });
     row.append(remove);
     host.append(row);
+    if (kind === 'tier') {
+      row.dataset.priceMode = saved.priceMode || (saved.wholesale !== undefined && saved.wholesale !== '' ? 'manual' : saved.discount !== undefined ? 'calculated' : 'manual');
+      row.querySelector('[data-name="wholesale"]').addEventListener('input', () => { row.dataset.priceMode = 'manual'; });
+      row.querySelector('[data-name="discount"]').addEventListener('input', () => { row.dataset.priceMode = 'calculated'; syncCalculatedTiers(); update(); });
+      syncCalculatedTiers();
+    }
     update();
+  }
+  function syncCalculatedTiers() {
+    const base = number($(workflow === 'existing' ? 'existingWholesalePrice' : 'proposedWholesale'));
+    for (const row of $('tierRows').querySelectorAll('.exception-row[data-price-mode="calculated"]')) {
+      const discount = number(row.querySelector('[data-name="discount"]'));
+      row.querySelector('[data-name="wholesale"]').value = valid(base) && valid(discount) && discount <= 100
+        ? (base * (1 - discount / 100)).toFixed(2) : '';
+    }
   }
   function exceptionSnapshot(kind) {
     return [...$(kind === 'tier' ? 'tierRows' : 'customerPriceRows').querySelectorAll('.exception-row')].map(row =>
-      Object.fromEntries([...row.querySelectorAll('[data-name]')].map(input => [input.dataset.name, input.value.trim()])));
+      ({ ...Object.fromEntries([...row.querySelectorAll('[data-name]')].map(input => [input.dataset.name, input.value.trim()])), ...(kind === 'tier' ? { priceMode: row.dataset.priceMode } : {}) }));
   }
   function restoreExceptions(tiers = [], customers = []) {
     $('tierRows').replaceChildren();
@@ -351,7 +418,8 @@ Zircon`.split('\n');
   function renderRelatedProducts() {
     const host = $('relatedProducts');
     host.replaceChildren();
-    for (const code of relatedProducts) {
+    document.querySelectorAll('.related-slot-sku').forEach((input, i) => { input.value = relatedProducts[i] || ''; });
+    for (const code of relatedProducts.filter(Boolean)) {
       const item = document.createElement('span');
       item.className = 'related-item';
       const text = document.createElement('span');
@@ -371,7 +439,7 @@ Zircon`.split('\n');
   }
   function addRelatedProduct(code = value('relatedProductInput')) {
     const trimmed = code.trim();
-    if (!trimmed || relatedProducts.some(item => item.toLowerCase() === trimmed.toLowerCase())) return;
+    if (!trimmed || relatedProducts.some(item => item && item.toLowerCase() === trimmed.toLowerCase())) return;
     relatedProducts.push(trimmed);
     put('relatedProductInput', '');
     renderRelatedProducts();
@@ -597,7 +665,7 @@ Zircon`.split('\n');
     $('weightsPreview').textContent = fallback(weights.join(' · '));
     $('gemstonesPreview').textContent = fallback(stones.join(', '));
     $('sizesPreview').textContent = fallback(value('catalogSizes'));
-    $('relatedPreview').textContent = relatedProducts.length ? relatedProducts.join(', ') : 'None added';
+    $('relatedPreview').textContent = relatedProducts.filter(Boolean).join(', ') || 'None added';
     $('notePreview').textContent = value('catalogInternalNote') || 'Invisible to public · no note';
     refreshSketchViews();
   }
@@ -972,6 +1040,7 @@ Zircon`.split('\n');
     $('breakdownComplete').checked = false;
   }
   function update() {
+    syncCalculatedTiers();
     for (const id of ['gold', 'silver']) {
       const state = $('rate-' + id);
       if (state && rates[id]) {
@@ -1165,6 +1234,10 @@ Zircon`.split('\n');
       $('saveStatus').textContent = 'Amounts and multipliers must be zero or greater.';
       return;
     }
+    if ([...document.querySelectorAll('#tierRows [data-name="discount"]')].some(input => input.value !== '' && Number(input.value) > 100)) {
+      $('saveStatus').textContent = 'Tier discounts must be between 0% and 100%.';
+      return;
+    }
     if (workflow === 'new' && (!valid(number($('newWholesaleMultiplier'))) || !valid(number($('newRetailMultiplier'))))) {
       $('saveStatus').textContent = 'Enter valid wholesale and retail cost multipliers.'; return;
     }
@@ -1234,7 +1307,7 @@ Zircon`.split('\n');
     put('newWholesaleMultiplier', '2.00'); put('newRetailMultiplier', '4.00');
     put('dealerMarkup', '5');
     $('costVerified').checked = false;
-    restoreExceptions([], []);
+    restoreExceptions(defaultTiers(), []);
     restoreCatalog();
     clearComponents();
     $('componentPanel').open = false;
@@ -1386,6 +1459,7 @@ Zircon`.split('\n');
     }
   });
   populateGemstones();
+  restoreExceptions(defaultTiers(), []);
   renderTags();
   syncPicker();
   display();

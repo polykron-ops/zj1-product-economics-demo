@@ -593,3 +593,40 @@ body.editor-open { overflow: hidden; }
 .choice-grid input, .choice-inline input, .show-choices input, .breakdown-confirm input { accent-color: var(--accent-electric); }
 .preset-tags button[aria-pressed="true"] { border-color: #8dbaff; background: #eef5ff; color: #145cb9; }
 @media (hover: none) { .photo-import { opacity: 1; pointer-events: auto; } }
+
+/* Trial preview, pricing, and compact editor controls. */
+.sketch-preview-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 18px; }
+.sketch-preview-head .sketch-section-title { margin: 0; }
+.preview-mode-toggle { flex: none; border: 1px solid #a9ccff; border-radius: 999px; background: #eaf3ff; color: #075bd4; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer; }
+.preview-mode-toggle:hover, .preview-mode-toggle:focus-visible { background: #d7eaff; outline-color: var(--accent-electric); }
+.sketch-preview-prices { grid-template-columns: minmax(0,1fr) minmax(0,2fr); gap: 9px; }
+.sketch-preview-prices > div { min-width: 0; }
+.preview-wholesale-tiers { display: grid !important; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+.preview-wholesale-tiers[hidden] { display: none !important; }
+.preview-wholesale-tiers > div { display: flex; flex-direction: column; gap: 5px; border-left: 1px solid #e6e8ed; padding-left: 8px; }
+.preview-cart { display: flex; align-items: end; justify-content: flex-end; gap: 8px; margin-top: 15px; }
+.preview-cart label { color: #747680; font-size: 11px; }
+.preview-cart input { width: 59px; min-height: 32px; border: 1px solid #d9dce3; border-radius: 4px; padding: 3px 5px; }
+.preview-cart .btn { min-height: 32px; font-size: 11px; }
+.preview-cart-status { min-height: 16px; margin: 7px 0 0 !important; text-align: right; color: #425476 !important; font-size: 10px !important; }
+.sketch-related-editor { margin-top: 17px; padding-top: 16px; border-top: 1px solid #ededf0; }
+.sketch-related-heading { margin-bottom: 9px; font-size: 12px; font-weight: 700; }
+.sketch-related-slots { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; }
+.sketch-related-slot { min-width: 0; display: flex; flex-direction: column; gap: 5px; color: #777982; font-size: 10px; }
+.related-image-placeholder { display: grid; place-items: center; aspect-ratio: 1; border: 1px dashed #cbd4e2; border-radius: 5px; background: #f7f9fc; color: #8692a4; font-size: 11px; }
+.sketch-related-slot .text-input { width: 100%; min-width: 0; padding: 6px; font-size: 11px; }
+.sketch-guidance-pair { display: grid; grid-template-columns: minmax(80px,1fr) minmax(110px,1.25fr); gap: 7px; align-items: stretch; }
+.sketch-guidance-pair .input-money { max-width: none; width: 100%; }
+.calculated-price { display: flex; flex-direction: column; justify-content: center; min-width: 0; border: 1px solid #dfe8f5; border-radius: 4px; padding: 4px 7px; background: #f7faff; }
+.calculated-price small { color: #65768d; font-size: 9px; }
+.calculated-price output { color: #1e385e; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.sketch-display-price { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 5px 8px; align-items: center; margin-top: 10px; }
+.sketch-display-price label { grid-column: 1 / -1; font-size: 11px; font-weight: 650; }
+.sketch-display-price .input-money { width: 100%; max-width: none; }
+.sketch-display-price .link-button { font-size: 10px; white-space: nowrap; }
+.sketch-prices #tierRows .exception-row { grid-template-columns: minmax(90px,1.2fr) 70px 77px minmax(85px,1fr) auto; gap: 5px; }
+.sketch-prices #tierRows .exception-row .link-button { font-size: 10px; }
+.sketch-list-head > span { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.sketch-list-head #expandAllAttributes { font-size: 11px; white-space: nowrap; }
+@media (max-width: 1080px) { .sketch-prices #tierRows .exception-row { grid-template-columns: repeat(2,minmax(0,1fr)); } .sketch-prices #tierRows .exception-row .link-button { justify-self: start; } }
+@media (max-width: 580px) { .sketch-preview-prices { grid-template-columns: 1fr; } .preview-wholesale-tiers > div:first-child { border-left: 0; padding-left: 0; } .sketch-guidance-grid { grid-template-columns: 1fr; } .sketch-related-slots { grid-template-columns: repeat(2,minmax(0,1fr)); } }

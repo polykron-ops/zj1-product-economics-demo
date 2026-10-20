@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Product details | Zuman Medusa trial</title>
   <meta name="description" content="A standalone Medusa-style product editing trial for Zuman Jewelry.">
-  <link rel="stylesheet" href="./style.css?v=12">
-  <script src="./app.js?v=12" defer></script>
+  <link rel="stylesheet" href="./style.css?v=13">
+  <script src="./app.js?v=13" defer></script>
 </head>
 <body>
   <div class="trial-rail"><span>Operator trial · Medusa layout version</span><span class="trial-links"><a href="../product-economics/">Original version</a><button type="button" id="openTrial">Trial tools <span aria-hidden="true">↗</span></button></span></div>
@@ -22,21 +22,24 @@
         <div class="page-heading"><span class="back-link">‹ Back to products</span></div>
         <div class="sketch-top-row">
           <section class="panel sketch-preview" aria-label="Product display preview">
-            <h2 id="sketchPreviewTitle" class="sketch-section-title">Mixed Metal Bar Necklace</h2>
+            <div class="sketch-preview-head"><h2 id="sketchPreviewTitle" class="sketch-section-title">Mixed Metal Bar Necklace</h2><button type="button" id="previewModeToggle" class="preview-mode-toggle" aria-label="Preview Wholesale; switch to Retail">Wholesale</button></div>
             <div class="sketch-site-card">
               <div id="sketchPhotoHost" class="sketch-photo"><button type="button" id="photoImport" class="photo-import" aria-label="Import product image" title="Import product image"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8a2 2 0 0 1 2-2h2l1.5-2h5L16 6h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3"/></svg></button></div>
               <div class="sketch-site-copy">
                 <p id="sketchPreviewDescription">A geometric statement necklace with alternating warm and cool metallic bars suspended from a fine chain.</p>
-                <div class="sketch-preview-prices"><div><span>Wholesale Price</span><strong id="sketchPreviewWholesale">$US 0.00</strong></div></div>
+                <div class="sketch-preview-prices"><div><span id="previewPriceLabel">Price 1 pcs</span><strong id="sketchPreviewPrice">$US 0.00</strong></div><div id="previewWholesaleTiers" class="preview-wholesale-tiers"></div></div>
+                <div class="preview-cart"><label for="previewQty">pcs to add</label><input id="previewQty" type="number" min="1" max="50" step="1" value="1" inputmode="numeric"><button type="button" id="previewAddCart" class="btn btn-primary">Add to cart</button></div><p id="previewCartStatus" class="preview-cart-status" role="status" aria-live="polite"></p>
               </div>
             </div>
           </section>
           <section class="panel sketch-editor" aria-label="Edit product display">
             <div class="sketch-editor-meta"><h2 class="sketch-section-title">Product Display Editor</h2><div class="field-row"><label class="visually-hidden" for="sketchTitleInput">Product title</label><input id="sketchTitleInput" class="text-input" maxlength="120" value="Mixed Metal Bar Necklace" aria-label="Product title"></div></div>
             <div id="sketchDescriptionHost" class="sketch-description"></div>
-            <div id="sketchDisplayPricing"><div class="sketch-pricing-grid">
-              <div class="sketch-price-block"><label for="sketchWholesaleInput">Wholesale Price</label><div class="input-money"><span>$US</span><input id="sketchWholesaleInput" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div></div>
-              <div class="sketch-price-block"><label for="sketchRetailInput">Retail Price</label><div class="input-money"><span>$US</span><input id="sketchRetailInput" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div></div>
+            <div class="sketch-related-editor"><div class="sketch-related-heading">Related products</div><div id="sketchRelatedSlots" class="sketch-related-slots">
+              <label class="sketch-related-slot"><span class="related-image-placeholder" aria-hidden="true">Image</span><span>SKU</span><input class="text-input related-slot-sku" data-slot="0" aria-label="Related product 1 SKU" placeholder="SKU"></label>
+              <label class="sketch-related-slot"><span class="related-image-placeholder" aria-hidden="true">Image</span><span>SKU</span><input class="text-input related-slot-sku" data-slot="1" aria-label="Related product 2 SKU" placeholder="SKU"></label>
+              <label class="sketch-related-slot"><span class="related-image-placeholder" aria-hidden="true">Image</span><span>SKU</span><input class="text-input related-slot-sku" data-slot="2" aria-label="Related product 3 SKU" placeholder="SKU"></label>
+              <label class="sketch-related-slot"><span class="related-image-placeholder" aria-hidden="true">Image</span><span>SKU</span><input class="text-input related-slot-sku" data-slot="3" aria-label="Related product 4 SKU" placeholder="SKU"></label>
             </div></div>
           </section>
         </div>
@@ -51,14 +54,13 @@
               <div class="sketch-cost-field sketch-cost-total"><div class="input-money"><span>$US</span><output id="sketchTotalCostValue" for="sketchMaterialCost sketchDirectLaborCost sketchOverheadCost sketchUnallocatedCost">0.00</output></div><span>Total</span></div>
             </div>
             <div id="sketchComponentsHost"></div>
-            <div class="sketch-price-guidance"><div class="sketch-prices-head"><strong>Multipliers</strong></div><div class="sketch-guidance-grid"><div class="sketch-guidance-item"><label for="newWholesaleMultiplier">Wholesale multiplier</label><div id="sketchWholesaleMultiplierHost"></div><div class="sketch-suggestion"><span id="sketchWholesaleSuggestion">Enter multiplier</span><button type="button" id="useWholesaleSuggestion" class="link-button" disabled>Use</button></div></div><div class="sketch-guidance-item"><label for="newRetailMultiplier">Retail multiplier</label><div id="sketchRetailMultiplierHost"></div><div class="sketch-suggestion"><span id="sketchRetailSuggestion">Enter multiplier</span><button type="button" id="useRetailSuggestion" class="link-button" disabled>Use</button></div></div></div></div>
+            <div class="sketch-price-guidance"><div class="sketch-guidance-grid"><div class="sketch-guidance-item"><label for="newWholesaleMultiplier">Wholesale multiplier</label><div class="sketch-guidance-pair"><div id="sketchWholesaleMultiplierHost"></div><div class="calculated-price"><small>Calculated price</small><output id="sketchWholesaleSuggestion">$US 0.00</output></div></div><div class="sketch-display-price"><label for="sketchWholesaleInput">Wholesale Price</label><div class="input-money"><span>$US</span><input id="sketchWholesaleInput" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div><button type="button" id="useWholesaleSuggestion" class="link-button" disabled>Use calculated</button></div></div><div class="sketch-guidance-item"><label for="newRetailMultiplier">Retail multiplier</label><div class="sketch-guidance-pair"><div id="sketchRetailMultiplierHost"></div><div class="calculated-price"><small>Calculated price</small><output id="sketchRetailSuggestion">$US 0.00</output></div></div><div class="sketch-display-price"><label for="sketchRetailInput">Retail Price</label><div class="input-money"><span>$US</span><input id="sketchRetailInput" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div><button type="button" id="useRetailSuggestion" class="link-button" disabled>Use calculated</button></div></div></div></div>
             <div class="sketch-prices"><div class="sketch-prices-head"><strong>Wholesale tiers</strong><button type="button" id="sketchAddTier" class="link-button">+ Add tier</button></div><div id="sketchTierHost"></div><div class="sketch-prices-head"><strong>Customer-specific prices</strong><button type="button" id="sketchAddCustomer" class="link-button">+ Add customer price</button></div><div id="sketchCustomerHost"></div></div>
           </section>
-          <section class="panel sketch-attributes" aria-label="Product attributes in alphabetical order"><div class="sketch-list-head"><small>FIELD</small><small>CURRENT VALUE</small></div><div class="sketch-attribute-list">
+          <section class="panel sketch-attributes" aria-label="Product attributes in alphabetical order"><div class="sketch-list-head"><small>FIELD</small><span><small>CURRENT VALUE</small><button type="button" id="expandAllAttributes" class="link-button" aria-expanded="false">Expand all</button></span></div><div class="sketch-attribute-list">
             <details><summary><span>Categories</span><small id="sketchCategories">None</small><b>›</b></summary><div id="sketchCategoriesHost"></div></details>
             <details><summary><span>Gemstones</span><small id="sketchGemstones">None</small><b>›</b></summary><div id="sketchGemstonesHost"></div></details>
             <details><summary><span>Note</span><small id="sketchNote">None</small><b>›</b></summary><div id="sketchNoteHost"></div></details>
-            <details><summary><span>Related products</span><small id="sketchRelated">None</small><b>›</b></summary><div id="sketchRelatedHost"></div></details>
             <details><summary><span>Section</span><small id="sketchSectionRow">Not set</small><b>›</b></summary><div id="sketchSectionHost"></div></details>
             <details><summary><span>Size</span><small id="sketchSize">Not set</small><b>›</b></summary><div id="sketchSizeHost"></div></details>
             <details><summary><span>SKU</span><small id="sketchSkuRow">AVN01575</small><b>›</b></summary><div id="sketchSkuHost"></div></details>
