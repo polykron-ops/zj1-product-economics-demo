@@ -729,3 +729,29 @@ body.editor-open { overflow: hidden; }
 .sketch-prices-head:not(:first-child) { margin-top: 8px; padding-top: 8px; }
 .sketch-prices .exception-row { margin-bottom: 4px; }
 @media (max-width: 580px) { .sketch-preview, .sketch-economics { padding: 18px; } }
+
+/* Distribute the calculator across four matching columns. */
+.sketch-economics { --calc-gap: 10px; }
+.sketch-economics .sketch-cost-fields { grid-template-columns: repeat(4,minmax(0,1fr)); gap: var(--calc-gap); }
+.sketch-economics .sketch-cost-field { width: auto; }
+.sketch-economics .sketch-guidance-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--calc-gap); }
+.sketch-economics .sketch-guidance-item h3 { margin: 0 0 6px; font-size: 12px; line-height: 1.2; }
+.sketch-economics .sketch-guidance-pair { grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--calc-gap); }
+.sketch-economics .sketch-guidance-control { min-width: 0; }
+.sketch-economics .sketch-guidance-control > label { display: block; min-height: 15px; margin-bottom: 4px; color: #696b74; font-size: 11px; font-weight: 650; }
+.sketch-economics .sketch-cost-field .input-money,
+.sketch-economics .sketch-guidance-pair .input-money,
+.sketch-economics .exception-field input { width: 100%; max-width: none; height: var(--calc-field-height); }
+.sketch-economics #tierRows .exception-row { position: relative; grid-template-columns: repeat(4,minmax(0,1fr)); gap: var(--calc-gap); }
+.sketch-economics #customerPriceRows .exception-row { position: relative; grid-template-columns: repeat(3,minmax(0,1fr)); gap: var(--calc-gap); }
+.sketch-economics .exception-row > .link-button { position: absolute; top: 0; right: 0; width: 18px; height: 18px; padding: 0; font-size: 17px; line-height: 16px; }
+.sketch-economics #componentPanel .generic-fields,
+.sketch-economics #componentPanel .metal-fields,
+.sketch-economics #componentPanel .stone-row { justify-content: space-between; }
+.sketch-calculation-notice { margin: 8px 0 0; color: #8d5b21; font-size: 11px; }
+@media (max-width: 1180px) {
+  .sketch-economics .sketch-cost-fields,
+  .sketch-economics #tierRows .exception-row,
+  .sketch-economics #customerPriceRows .exception-row { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .sketch-economics .sketch-guidance-grid { grid-template-columns: 1fr; }
+}

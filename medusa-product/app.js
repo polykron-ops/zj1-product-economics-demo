@@ -172,6 +172,21 @@ Zircon`.split('\n');
   const checked = id => [...$(id).querySelectorAll('input:checked')].map(input => input.value);
   const radio = name => document.querySelector(`input[name="${name}"]:checked`)?.value || '';
   const costBuckets = [['material', 'sketchMaterialCost'], ['directLabor', 'sketchDirectLaborCost'], ['overhead', 'sketchOverheadCost'], ['unallocated', 'sketchUnallocatedCost']];
+  const pricePairs = [
+    ['sketchWholesaleInput', 'existingWholesalePrice', 'proposedWholesale', 'newWholesaleMultiplier'],
+    ['sketchRetailInput', 'existingRetailPrice', 'proposedRetail', 'newRetailMultiplier']
+  ];
+  const activePriceId = (existing, proposed) => workflow === 'existing' ? existing : proposed;
+  function syncPricesAfterCostChange() {
+    const cost = number($('totalCost'));
+    if (!valid(cost) || cost === 0) return;
+    for (const [, existing, proposed, multiplier] of pricePairs) {
+      const priceId = activePriceId(existing, proposed);
+      const price = number($(priceId));
+      if (valid(price)) put(multiplier, (price / cost).toFixed(6).replace(/0+$/, '').replace(/\.$/, ''));
+      else if (valid(number($(multiplier)))) put(priceId, (cost * number($(multiplier))).toFixed(2));
+    }
+  }
   function syncCostBuckets() {
     const entered = costBuckets.map(([, id]) => $(id)).filter(input => input.value.trim() !== '');
     const invalid = entered.some(input => !valid(number(input)));
@@ -187,7 +202,10 @@ Zircon`.split('\n');
       if (value('existingWholesalePrice') === '') put('existingWholesalePrice', value('proposedWholesale'));
       if (value('existingRetailPrice') === '') put('existingRetailPrice', value('proposedRetail'));
       setWorkflow('existing');
-    } else update();
+    }
+    syncPricesAfterCostChange();
+    $('sketchCalculationNotice').hidden = true;
+    update();
   }
   function restoreCostBuckets(data = {}) {
     const prior = data.costBuckets;
@@ -222,10 +240,12 @@ Zircon`.split('\n');
     $('adoptSubtotal').textContent = 'Use subtotal in cost fields';
     move('sketchWholesaleMultiplierHost', $('newWholesaleMultiplier').closest('.input-money'));
     move('sketchRetailMultiplierHost', $('newRetailMultiplier').closest('.input-money'));
+    $('newWholesaleMultiplier').step = 'any';
+    $('newRetailMultiplier').step = 'any';
     $('newWholesaleMultiplier').setAttribute('aria-label', 'Wholesale cost multiplier');
-    $('newWholesaleMultiplier').title = 'Calculates a reference suggestion only. It never changes the displayed price automatically.';
+    $('newWholesaleMultiplier').title = 'With a recorded cost, editing this updates the displayed wholesale price.';
     $('newRetailMultiplier').setAttribute('aria-label', 'Retail cost multiplier');
-    $('newRetailMultiplier').title = 'Calculates a reference suggestion only. It never changes the displayed price automatically.';
+    $('newRetailMultiplier').title = 'With a recorded cost, editing this updates the displayed retail price.';
     move('sketchTierHost', $('tierRows'));
     move('sketchCustomerHost', $('customerPriceRows'));
     const attributeControls = [
@@ -266,23 +286,19 @@ Zircon`.split('\n');
         : 'Enter a displayed price to preview the cart total.';
     });
     for (const [, id] of costBuckets) $(id).addEventListener('input', syncCostBuckets);
-    for (const [visible, existing, proposed] of [
-      ['sketchWholesaleInput', 'existingWholesalePrice', 'proposedWholesale'],
-      ['sketchRetailInput', 'existingRetailPrice', 'proposedRetail']
-    ]) {
+    for (const [visible, existing, proposed, multiplier] of pricePairs) {
       $(visible).addEventListener('input', () => {
-        put(workflow === 'existing' ? existing : proposed, value(visible));
+        put(activePriceId(existing, proposed), value(visible));
+        const cost = number($('totalCost'));
+        const price = number($(visible));
+        put(multiplier, valid(cost) && cost > 0 && valid(price) ? (price / cost).toFixed(6).replace(/0+$/, '').replace(/\.$/, '') : '');
+        $('sketchCalculationNotice').hidden = true;
         update();
       });
-    }
-    for (const [button, existing, proposed, multiplier] of [
-      ['useWholesaleSuggestion', 'existingWholesalePrice', 'proposedWholesale', 'newWholesaleMultiplier'],
-      ['useRetailSuggestion', 'existingRetailPrice', 'proposedRetail', 'newRetailMultiplier']
-    ]) {
-      $(button).addEventListener('click', () => {
+      $(multiplier).addEventListener('input', () => {
         const cost = number($('totalCost')), factor = number($(multiplier));
-        if (!valid(cost) || !valid(factor)) return;
-        put(workflow === 'existing' ? existing : proposed, (cost * factor).toFixed(2));
+        $('sketchCalculationNotice').hidden = valid(cost) && cost > 0;
+        if (valid(cost) && cost > 0 && valid(factor)) put(activePriceId(existing, proposed), (cost * factor).toFixed(2));
         update();
       });
     }
@@ -298,10 +314,7 @@ Zircon`.split('\n');
       ['sketchSize', 'sizesPreview'], ['sketchTagsRow', 'tagsPreview'],
       ['sketchVisible', 'overviewShow'], ['sketchWeight', 'weightsPreview']
     ]) copy(target, source);
-    const display = [
-      ['sketchWholesaleInput', workflow === 'existing' ? 'existingWholesalePrice' : 'proposedWholesale'],
-      ['sketchRetailInput', workflow === 'existing' ? 'existingRetailPrice' : 'proposedRetail']
-    ];
+    const display = pricePairs.map(([visible, existing, proposed]) => [visible, activePriceId(existing, proposed)]);
     for (const [target, source] of display) if ($(target).value !== value(source)) put(target, value(source));
     $('previewModeToggle').textContent = previewMode === 'wholesale' ? 'Wholesale' : 'Retail';
     $('previewModeToggle').setAttribute('aria-label', `Preview ${previewMode}; switch to ${previewMode === 'wholesale' ? 'Retail' : 'Wholesale'}`);
@@ -309,16 +322,6 @@ Zircon`.split('\n');
     $('previewQty').max = previewMode === 'wholesale' ? '50' : '';
     const previewPrice = previewUnitPrice();
     $('sketchPreviewPrice').textContent = valid(previewPrice) ? dollars(previewPrice) : '$US 0.00';
-    const cost = number($('totalCost'));
-    for (const [textId, buttonId, multiplierId] of [
-      ['sketchWholesaleSuggestion', 'useWholesaleSuggestion', 'newWholesaleMultiplier'],
-      ['sketchRetailSuggestion', 'useRetailSuggestion', 'newRetailMultiplier']
-    ]) {
-      const factor = number($(multiplierId));
-      const ready = valid(cost) && valid(factor);
-      $(textId).textContent = ready ? dollars(cost * factor) : '$US 0.00';
-      $(buttonId).disabled = !ready;
-    }
   }
   buildSketchLayout();
   function setWorkflow(next) {
@@ -353,7 +356,9 @@ Zircon`.split('\n');
     const remove = document.createElement('button');
     remove.type = 'button';
     remove.className = 'link-button';
-    remove.textContent = 'Remove';
+    remove.textContent = '×';
+    remove.setAttribute('aria-label', kind === 'tier' ? 'Remove wholesale tier' : 'Remove customer price');
+    remove.title = kind === 'tier' ? 'Remove wholesale tier' : 'Remove customer price';
     remove.addEventListener('click', () => { row.remove(); update(); });
     row.append(remove);
     host.append(row);
@@ -1060,7 +1065,7 @@ Zircon`.split('\n');
     $('copySuggestions').disabled = suggestedWholesale === null || suggestedRetail === null;
     $('costQuality').textContent = !valid(cost) ? 'Enter a total cost to calculate suggestions.' : !($('costVerified').checked) ? 'Cost not yet verified. Suggestions are provisional.' : active.length && !complete ? 'Cost checked, but the optional component breakdown is incomplete.' : active.length && Math.abs(subtotal() - cost) > .005 ? 'Cost checked, but it differs from the optional component subtotal. Review before approval.' : 'Total cost checked for this trial.';
     const proposedW = number($('proposedWholesale')), proposedR = number($('proposedRetail'));
-    $('proposalStatus').textContent = proposedW === null && proposedR === null ? 'Enter display prices or copy the suggestions once.' : suggestedWholesale !== null && suggestedRetail !== null && (proposedW !== null && Math.abs(proposedW - suggestedWholesale) > .005 || proposedR !== null && Math.abs(proposedR - suggestedRetail) > .005) ? 'Display prices differ from current suggestions. Your entered prices are preserved.' : 'Display prices stay as entered when costs or multipliers change.';
+    $('proposalStatus').textContent = proposedW === null && proposedR === null ? 'Enter a cost and multiplier, or type a displayed price directly.' : 'Editing a multiplier updates its price; editing a price updates its multiplier when cost is recorded.';
     const displayWholesale = workflow === 'existing' ? number($('existingWholesalePrice')) : proposedW;
     const displayRetail = workflow === 'existing' ? number($('existingRetailPrice')) : proposedR;
     $('overviewMode').textContent = workflow === 'existing' ? 'Existing product · approved prices' : 'New product · proposed prices';
