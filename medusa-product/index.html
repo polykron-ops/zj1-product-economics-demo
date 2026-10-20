@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Product details | Zuman Medusa trial</title>
   <meta name="description" content="A standalone Medusa-style product editing trial for Zuman Jewelry.">
-  <link rel="stylesheet" href="./style.css?v=10">
-  <script src="./app.js?v=10" defer></script>
+  <link rel="stylesheet" href="./style.css?v=11">
+  <script src="./app.js?v=11" defer></script>
 </head>
 <body>
   <div class="trial-rail"><span>Operator trial · Medusa layout version</span><span class="trial-links"><a href="../product-economics/">Original version</a><button type="button" id="openTrial">Trial tools <span aria-hidden="true">↗</span></button></span></div>
@@ -22,18 +22,16 @@
         <div class="page-heading"><span class="back-link">‹ Back to products</span></div>
         <div class="sketch-top-row">
           <section class="panel sketch-preview" aria-label="Product display preview">
-            <h2 class="sketch-section-title">Product overview</h2>
+            <h2 id="sketchPreviewTitle" class="sketch-section-title">Mixed Metal Bar Necklace</h2>
             <div class="sketch-site-card">
               <div id="sketchPhotoHost" class="sketch-photo"></div>
               <div class="sketch-site-copy">
-                <h1 id="sketchPreviewTitle">Mixed Metal Bar Necklace</h1>
                 <p id="sketchPreviewDescription">A geometric statement necklace with alternating warm and cool metallic bars suspended from a fine chain.</p>
-                <div class="sketch-preview-prices"><div><span>Wholesale Price</span><strong id="sketchPreviewWholesale">$US 0.00</strong></div><div><span>Retail Price</span><strong id="sketchPreviewRetail">$US 0.00</strong></div></div>
+                <div class="sketch-preview-prices"><div><span>Wholesale Price</span><strong id="sketchPreviewWholesale">$US 0.00</strong></div></div>
               </div>
             </div>
           </section>
           <section class="panel sketch-editor" aria-label="Edit product display">
-            <h2 class="sketch-section-title">Edit product display</h2>
             <div class="sketch-editor-meta"><div class="field-row"><label for="sketchTitleInput">Product title</label><input id="sketchTitleInput" class="text-input" maxlength="120" value="Mixed Metal Bar Necklace"></div><div id="sketchImageEditorHost"></div></div>
             <div id="sketchDescriptionHost" class="sketch-description"></div>
             <div id="sketchDisplayPricing"><h2 class="sketch-section-title sketch-pricing-title">Pricing</h2><div class="sketch-pricing-grid">
@@ -56,7 +54,7 @@
             <div class="sketch-price-guidance"><div class="sketch-prices-head"><strong>Price suggestions</strong></div><div class="sketch-guidance-grid"><div class="sketch-guidance-item"><label for="newWholesaleMultiplier">Wholesale ×</label><div id="sketchWholesaleMultiplierHost"></div><div class="sketch-suggestion"><span id="sketchWholesaleSuggestion">Enter cost for a suggestion</span><button type="button" id="useWholesaleSuggestion" class="link-button" disabled>Use</button></div></div><div class="sketch-guidance-item"><label for="newRetailMultiplier">Retail ×</label><div id="sketchRetailMultiplierHost"></div><div class="sketch-suggestion"><span id="sketchRetailSuggestion">Enter cost for a suggestion</span><button type="button" id="useRetailSuggestion" class="link-button" disabled>Use</button></div></div></div></div>
             <div class="sketch-prices"><div class="sketch-prices-head"><strong>Wholesale tiers</strong><button type="button" id="sketchAddTier" class="link-button">+ Add tier</button></div><div id="sketchTierHost"></div><div class="sketch-prices-head"><strong>Customer-specific prices</strong><button type="button" id="sketchAddCustomer" class="link-button">+ Add customer price</button></div><div id="sketchCustomerHost"></div></div>
           </section>
-          <section class="panel sketch-attributes" aria-label="Product attributes in alphabetical order"><h2 class="sketch-section-title sketch-attributes-title">Attributes</h2><div class="sketch-list-head"><small>FIELD</small><small>CURRENT VALUE</small></div><div class="sketch-attribute-list">
+          <section class="panel sketch-attributes" aria-label="Product attributes in alphabetical order"><div class="sketch-list-head"><small>FIELD</small><small>CURRENT VALUE</small></div><div class="sketch-attribute-list">
             <details><summary><span>Categories</span><small id="sketchCategories">None</small><b>›</b></summary><div id="sketchCategoriesHost"></div></details>
             <details><summary><span>Gemstones</span><small id="sketchGemstones">None</small><b>›</b></summary><div id="sketchGemstonesHost"></div></details>
             <details><summary><span>Note</span><small id="sketchNote">None</small><b>›</b></summary><div id="sketchNoteHost"></div></details>

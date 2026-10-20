@@ -264,7 +264,7 @@ Zircon`.split('\n');
       ['sketchRetailInput', workflow === 'existing' ? 'existingRetailPrice' : 'proposedRetail']
     ];
     for (const [target, source] of display) if ($(target).value !== value(source)) put(target, value(source));
-    for (const [preview, input] of [['sketchPreviewWholesale', 'sketchWholesaleInput'], ['sketchPreviewRetail', 'sketchRetailInput']]) {
+    for (const [preview, input] of [['sketchPreviewWholesale', 'sketchWholesaleInput']]) {
       const amount = number($(input));
       $(preview).textContent = valid(amount) ? dollars(amount) : amount === null ? '$US 0.00' : '—';
     }
