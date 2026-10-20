@@ -192,8 +192,13 @@ Zircon`.split('\n');
   }
   function buildSketchLayout() {
     const move = (host, node) => $(host).append(node);
-    move('sketchPhotoHost', $('productPhoto').closest('.image-wrap'));
-    move('sketchImageEditorHost', $('catalogImage').closest('.image-edit-row'));
+    $('sketchPhotoHost').prepend($('productPhoto').closest('.image-wrap'));
+    const imageRow = $('catalogImage').closest('.image-edit-row');
+    move('sketchPhotoHost', $('catalogImage'));
+    $('catalogImageStatus').classList.add('visually-hidden');
+    move('sketchPhotoHost', $('catalogImageStatus'));
+    imageRow.remove();
+    $('photoImport').addEventListener('click', () => $('catalogImage').click());
     move('sketchDescriptionHost', $('toggleDescription').closest('.description-heading'));
     move('sketchDescriptionHost', $('catalogDescription').closest('.description-section'));
     move('sketchComponentsHost', $('componentPanel'));
@@ -275,7 +280,7 @@ Zircon`.split('\n');
     ]) {
       const factor = number($(multiplierId));
       const ready = valid(cost) && valid(factor);
-      $(textId).textContent = ready ? `Suggested ${dollars(cost * factor)} · reference only` : 'Enter cost for a suggestion';
+      $(textId).textContent = ready ? `Suggested ${dollars(cost * factor)} · reference only` : 'Enter multiplier';
       $(buttonId).disabled = !ready;
     }
   }

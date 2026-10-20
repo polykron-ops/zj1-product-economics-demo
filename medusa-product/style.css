@@ -568,3 +568,28 @@ body.editor-open { overflow: hidden; }
 @media (max-width: 1080px) { .sketch-editor .description-section { grid-template-columns: 1fr; } }
 @media (max-width: 800px) { .sketch-top-row { grid-template-columns: 1fr; } .sketch-preview .sketch-photo .image-wrap { height: 280px; } }
 @media (max-width: 580px) { .sketch-preview, .sketch-editor { padding: 20px; } .sketch-preview .sketch-photo .image-wrap { height: 260px; } .sketch-editor-meta .image-edit-row { flex-wrap: wrap; } }
+
+/* Electric blue trial accent and direct editing from the product photo. */
+:root { --accent-electric: #1677ff; }
+.sketch-preview .sketch-photo { position: relative; }
+.photo-import { position: absolute; right: 12px; bottom: 12px; z-index: 2; display: grid; place-items: center; width: 38px; height: 38px; padding: 0; border: 0; border-radius: 50%; background: var(--accent-electric); color: #fff; box-shadow: 0 3px 12px #172e5666; opacity: 0; pointer-events: none; transition: opacity .15s ease; }
+.photo-import svg { width: 20px; height: 20px; }
+.sketch-photo:hover .photo-import, .photo-import:focus-visible { opacity: 1; pointer-events: auto; }
+.photo-import:focus-visible { outline: 3px solid #9cc7ff; outline-offset: 3px; }
+.sketch-editor-meta .sketch-section-title { margin: 0 0 16px; }
+.sketch-editor .sketch-description { margin-top: 19px; padding-top: 16px; }
+.sketch-editor .description-heading { justify-content: flex-end; margin: 0 0 9px; padding: 0; border: 0; }
+#sketchDisplayPricing { margin-top: 17px; padding-top: 16px; border-top: 1px solid #ededf0; }
+.sketch-pricing-grid .sketch-price-block { padding: 0; border: 0; background: transparent; }
+.sketch-pricing-grid .sketch-price-block > label { display: block; margin: 0 0 7px; color: #35373e; font-size: 12px; font-weight: 700; }
+.description-switch[aria-checked="true"] .switch-track { background: var(--accent-electric); }
+.description-switch[aria-checked="true"] { color: var(--accent-electric); }
+.description-switch:focus-visible { outline-color: var(--accent-electric); }
+.link-button, .sketch-economics #componentPanel > summary { color: var(--accent-electric); }
+.text-input:focus, .input-money:focus-within { border-color: var(--accent-electric); box-shadow: 0 0 0 2px #1677ff29; }
+.btn-primary { background: var(--accent-electric); border-color: var(--accent-electric); }
+.btn-primary:hover { background: #005cdb; }
+.sidebar-nav .nav-item.active { color: var(--accent-electric); background: #eef5ff; }
+.choice-grid input, .choice-inline input, .show-choices input, .breakdown-confirm input { accent-color: var(--accent-electric); }
+.preset-tags button[aria-pressed="true"] { border-color: #8dbaff; background: #eef5ff; color: #145cb9; }
+@media (hover: none) { .photo-import { opacity: 1; pointer-events: auto; } }
