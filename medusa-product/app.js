@@ -146,10 +146,10 @@ Zircon`.split('\n');
   const relatedProducts = [];
   let previewMode = 'wholesale';
   function previewUnitPrice() {
-    const qty = number($('previewQty'));
-    if (!Number.isInteger(qty) || qty < 1 || (previewMode === 'wholesale' && qty > 50)) return null;
     const base = number($(previewMode === 'wholesale' ? 'sketchWholesaleInput' : 'sketchRetailInput'));
     if (previewMode === 'retail') return valid(base) ? base : null;
+    const qty = number($('previewQty'));
+    if (!Number.isInteger(qty) || qty < 1 || qty > 50) return null;
     const tier = exceptionSnapshot('tier')
       .filter(item => item.minimum !== '' && item.wholesale !== '' && Number(item.minimum) <= qty && valid(Number(item.wholesale)))
       .sort((a, b) => Number(b.minimum) - Number(a.minimum))[0];
@@ -233,7 +233,6 @@ Zircon`.split('\n');
     move('sketchPhotoHost', $('catalogImageStatus'));
     imageRow.remove();
     $('photoImport').addEventListener('click', () => $('catalogImage').click());
-    move('sketchDescriptionHost', $('toggleDescription').closest('.description-heading'));
     move('sketchDescriptionHost', $('catalogDescription').closest('.field-row'));
     $('catalogDescription').setAttribute('aria-label', 'Editable product description');
     move('sketchComponentsHost', $('componentPanel'));
@@ -270,20 +269,7 @@ Zircon`.split('\n');
     }));
     $('previewModeToggle').addEventListener('click', () => {
       previewMode = previewMode === 'wholesale' ? 'retail' : 'wholesale';
-      $('previewCartStatus').textContent = '';
       refreshSketchViews();
-    });
-    $('previewQty').addEventListener('input', () => { $('previewCartStatus').textContent = ''; });
-    $('previewAddCart').addEventListener('click', () => {
-      const qty = number($('previewQty'));
-      if (!Number.isInteger(qty) || qty < 1 || (previewMode === 'wholesale' && qty > 50)) {
-        $('previewCartStatus').textContent = previewMode === 'wholesale' ? 'Enter 1–50 pcs.' : 'Enter a whole number of pcs.';
-        return;
-      }
-      const price = previewUnitPrice();
-      $('previewCartStatus').textContent = valid(price)
-        ? `${qty} pcs · ${dollars(price)} each · ${dollars(qty * price)} total (preview only)`
-        : 'Enter a displayed price to preview the cart total.';
     });
     for (const [, id] of costBuckets) $(id).addEventListener('input', syncCostBuckets);
     for (const [visible, existing, proposed, multiplier] of pricePairs) {
@@ -319,7 +305,9 @@ Zircon`.split('\n');
     $('previewModeToggle').textContent = previewMode === 'wholesale' ? 'Wholesale' : 'Retail';
     $('previewModeToggle').setAttribute('aria-label', `Preview ${previewMode}; switch to ${previewMode === 'wholesale' ? 'Retail' : 'Wholesale'}`);
     $('previewPriceLabel').textContent = previewMode === 'wholesale' ? 'Select Qty to Display Volume Pricing' : 'Retail Price';
+    $('previewPriceLabel').htmlFor = previewMode === 'wholesale' ? 'previewQty' : '';
     $('previewQty').max = previewMode === 'wholesale' ? '50' : '';
+    $('previewQty').hidden = previewMode === 'retail';
     const previewPrice = previewUnitPrice();
     $('sketchPreviewPrice').textContent = valid(previewPrice) ? dollars(previewPrice) : '$US 0.00';
   }
@@ -468,17 +456,14 @@ Zircon`.split('\n');
     else tags.splice(index, 1);
     renderTags();
   }
-  function setDescriptionEnabled(enabled) {
-    descriptionEnabled = enabled;
-    $('catalogDescription').disabled = !enabled;
-    $('catalogDescriptionHebrew').disabled = !enabled;
-    $('toggleDescription').setAttribute('aria-checked', String(enabled));
-    $('descriptionToggleLabel').textContent = enabled ? 'On' : 'Off';
-    document.querySelector('.description-section').classList.toggle('is-disabled', !enabled);
-    $('sketchDescriptionHost').classList.toggle('is-disabled', !enabled);
-    $('revertHebrew').disabled = !enabled || !hebrewOverride;
-    if (!enabled) cancelTranslation();
-    else if (!hebrewOverride && !value('catalogDescriptionHebrew') && value('catalogDescription')) scheduleHebrewTranslation();
+  function setDescriptionEnabled() {
+    descriptionEnabled = true;
+    $('catalogDescription').disabled = false;
+    $('catalogDescriptionHebrew').disabled = false;
+    document.querySelector('.description-section').classList.remove('is-disabled');
+    $('sketchDescriptionHost').classList.remove('is-disabled');
+    $('revertHebrew').disabled = !hebrewOverride;
+    if (!hebrewOverride && !value('catalogDescriptionHebrew') && value('catalogDescription')) scheduleHebrewTranslation();
     refreshMedusaViews();
   }
   function cancelTranslation() {
@@ -604,7 +589,7 @@ Zircon`.split('\n');
     $('hebrewSource').textContent = hebrewOverride
       ? 'Operator Hebrew override. Revert to translation to replace it.'
       : sampleDraft ? 'Translated from the sample English draft. Editable.' : 'Saved Hebrew translation. Editable.';
-    setDescriptionEnabled(item.descriptionEnabled !== false);
+    setDescriptionEnabled();
     put('catalogCode', item.sku ?? item.code ?? 'AVN01575');
     for (const input of $('catalogCategories').querySelectorAll('input')) input.checked = (item.categories || []).includes(input.value);
     for (const input of document.querySelectorAll('input[name="catalogStatus"]')) input.checked = input.value === (item.status || 'Active');
@@ -1374,7 +1359,6 @@ Zircon`.split('\n');
   $('addTag').addEventListener('click', () => addTag());
   $('tagInput').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); addTag(); } });
   $('presetTags').addEventListener('click', event => { const button = event.target.closest('button[data-tag]'); if (button) togglePresetTag(button.dataset.tag); });
-  $('toggleDescription').addEventListener('click', () => setDescriptionEnabled(!descriptionEnabled));
   $('catalogDescription').addEventListener('input', () => {
     if (hebrewOverride) {
       $('hebrewSource').textContent = 'Operator Hebrew override preserved. Revert to translate the current English.';
@@ -1407,7 +1391,6 @@ Zircon`.split('\n');
     if (event.key === 'Enter') { event.preventDefault(); addRelatedProduct(); }
   });
   document.addEventListener('input', event => {
-    if (event.target.matches('#sketchWholesaleInput, #sketchRetailInput, #previewQty') || event.target.closest('#tierRows')) $('previewCartStatus').textContent = '';
     if (event.target.matches('input[type=number], .stone-type')) update();
     else refreshMedusaViews();
   });

@@ -755,3 +755,21 @@ body.editor-open { overflow: hidden; }
   .sketch-economics #customerPriceRows .exception-row { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .sketch-economics .sketch-guidance-grid { grid-template-columns: 1fr; }
 }
+
+/* Equal heading hierarchy and measured spacing in the preview and calculator. */
+.sketch-preview-head .sketch-section-title,
+.sketch-cost-heading,
+.sketch-economics .sketch-guidance-item h3,
+.sketch-prices-head strong { font-size: 15px; line-height: 1.3; font-weight: 700; letter-spacing: normal; }
+.sketch-cost-heading small { color: inherit; font-size: inherit; font-weight: inherit; }
+.sketch-preview-head { margin-bottom: 11px; }
+.sketch-preview-prices { padding-top: 11px; }
+.sketch-preview-prices .preview-mode-toggle { display: grid; place-items: center; box-sizing: border-box; width: 98px; min-width: 98px; height: 36px; padding: 0; align-self: end; }
+.sketch-cost-heading { margin: 0 0 11px; }
+.sketch-economics #componentPanel { margin-top: 8px; }
+.sketch-price-guidance { margin-top: 17px; padding-top: 14px; }
+.sketch-economics .sketch-guidance-item h3 { margin: 0 0 9px; }
+.sketch-prices { margin-top: 17px; padding-top: 14px; }
+.sketch-prices-head { margin: 0 0 9px; }
+.sketch-prices-head:not(:first-child) { margin: 15px 0 9px; padding-top: 14px; }
+.sketch-prices .exception-row { margin-bottom: 7px; }
