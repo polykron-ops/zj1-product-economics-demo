@@ -149,7 +149,7 @@ Zircon`.split('\n');
     const base = number($(previewMode === 'wholesale' ? 'sketchWholesaleInput' : 'sketchRetailInput'));
     if (previewMode === 'retail') return valid(base) ? base : null;
     const qty = number($('previewQty'));
-    if (!Number.isInteger(qty) || qty < 1 || qty > 50) return null;
+    if (!Number.isInteger(qty) || qty < 1 || qty > 999999) return null;
     const tier = exceptionSnapshot('tier')
       .filter(item => item.minimum !== '' && item.wholesale !== '' && Number(item.minimum) <= qty && valid(Number(item.wholesale)))
       .sort((a, b) => Number(b.minimum) - Number(a.minimum))[0];
@@ -306,10 +306,12 @@ Zircon`.split('\n');
     $('previewModeToggle').setAttribute('aria-label', `Preview ${previewMode}; switch to ${previewMode === 'wholesale' ? 'Retail' : 'Wholesale'}`);
     $('previewPriceLabel').textContent = previewMode === 'wholesale' ? 'Select Qty to Display Volume Pricing' : 'Retail Price';
     $('previewPriceLabel').htmlFor = previewMode === 'wholesale' ? 'previewQty' : '';
-    $('previewQty').max = previewMode === 'wholesale' ? '50' : '';
+    $('previewQty').max = previewMode === 'wholesale' ? '999999' : '';
     $('previewQty').hidden = previewMode === 'retail';
     const previewPrice = previewUnitPrice();
-    $('sketchPreviewPrice').textContent = valid(previewPrice) ? dollars(previewPrice) : '$US 0.00';
+    const previewQtyValue = number($('previewQty'));
+    $('sketchPreviewPrice').textContent = valid(previewPrice) ? dollars(previewPrice)
+      : previewMode === 'wholesale' && !(Number.isInteger(previewQtyValue) && previewQtyValue >= 1) ? 'Enter a whole quantity of 1 or more' : 'Price not set';
   }
   buildSketchLayout();
   function setWorkflow(next) {
@@ -754,6 +756,7 @@ Zircon`.split('\n');
       if (data.currency !== 'USD' || !Number.isFinite(Number(data.price)) || Number(data.price) <= 0) throw new Error('Invalid quote');
       if (!active.includes(id)) return;
       rates[id] = { usdPerGram: Number(data.price) / TROY_GRAMS, updatedAt: data.updatedAt || new Date().toISOString(), provider: 'Gold API' };
+      $('manual-spot-' + id)?.remove();
       $('breakdownComplete').checked = false;
       update();
     } catch {
@@ -761,7 +764,19 @@ Zircon`.split('\n');
       rates[id] = previous;
       $('breakdownComplete').checked = false;
       update();
-      state.textContent = previous ? state.textContent + ' · Refresh failed; saved quote retained.' : 'Gold API unavailable. Live cost paused; retry quote.';
+      state.textContent = previous ? state.textContent + ' · Refresh failed; saved quote retained.' : 'Gold API unavailable. Retry the quote, or enter the spot price manually (USD per troy ounce):';
+      if (!previous && !$('manual-spot-' + id)) {
+        const input = document.createElement('input');
+        input.type = 'number'; input.min = '0'; input.step = '0.01'; input.id = 'manual-spot-' + id; input.className = 'text-input';
+        input.setAttribute('aria-label', 'Manual ' + id + ' spot price, USD per troy ounce');
+        input.addEventListener('input', () => {
+          const v = Number(input.value);
+          rates[id] = input.value.trim() !== '' && Number.isFinite(v) && v > 0 ? { usdPerGram: v / TROY_GRAMS, updatedAt: new Date().toISOString(), provider: 'Manual entry' } : null;
+          $('breakdownComplete').checked = false;
+          update();
+        });
+        state.after(input);
+      }
     }
   }
   function addStone(saved = {}) {
